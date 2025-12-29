@@ -1,10 +1,10 @@
-# HƯỚNG DẪN CẤU TRÚC DỰ ÁN SNEAKER STORE
+# TÀI LIỆU CẤU TRÚC DỰ ÁN - SNEAKER STORE
 
 ## 📁 CẤU TRÚC THƯ MỤC
 
 ```
 shop_giay_project/
-├── index.php              # Entry point - Điểm vào duy nhất
+├── app/                    # Logicpoint - Điểm vào duy nhất
 ├── .htaccess              # Cấu hình URL rewrite
 ├── config/                # Cấu hình
 ├── app/                   # Logic ứng dụng (MVC)

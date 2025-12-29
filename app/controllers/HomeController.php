@@ -124,22 +124,38 @@ class HomeController extends Controller
     }
 
     /**
-     * Thêm đánh giá sản phẩm
+     * Thêm đánh giá sản phẩm (AJAX)
      */
     public function addReview(): void
     {
-        if (!$this->isPost() || !Session::isLoggedIn()) {
-            $this->redirect('auth/login');
+        // Trả về JSON
+        header('Content-Type: application/json');
+        
+        if (!$this->isPost()) {
+            echo json_encode(['success' => false, 'message' => 'Invalid request']);
+            return;
+        }
+        
+        if (!Session::isLoggedIn()) {
+            echo json_encode(['success' => false, 'message' => 'Vui lòng đăng nhập', 'requireLogin' => true]);
+            return;
         }
 
         $productId = (int) $this->input('product_id');
         $rating = (int) $this->input('rating');
-        $comment = $this->input('comment');
+        $comment = trim($this->input('comment') ?? '');
 
         // Validate
         if ($rating < 1 || $rating > 5 || empty($comment)) {
-            Session::flash('error', 'Vui lòng nhập đầy đủ thông tin');
-            $this->redirect('home/products');
+            echo json_encode(['success' => false, 'message' => 'Vui lòng nhập đầy đủ thông tin']);
+            return;
+        }
+
+        // Kiểm tra sản phẩm tồn tại
+        $product = $this->db->fetchOne("SELECT id FROM products WHERE id = ?", [$productId]);
+        if (!$product) {
+            echo json_encode(['success' => false, 'message' => 'Sản phẩm không tồn tại']);
+            return;
         }
 
         // Kiểm tra đã đánh giá chưa
@@ -154,7 +170,6 @@ class HomeController extends Controller
                 "UPDATE reviews SET rating = ?, comment = ?, created_at = NOW() WHERE id = ?",
                 [$rating, $comment, $exists['id']]
             );
-            Session::flash('success', 'Cập nhật đánh giá thành công');
         } else {
             // Thêm đánh giá mới
             $this->db->insert('reviews', [
@@ -163,12 +178,9 @@ class HomeController extends Controller
                 'rating' => $rating,
                 'comment' => $comment
             ]);
-            Session::flash('success', 'Gửi đánh giá thành công');
         }
 
-        // Lấy slug để redirect
-        $product = $this->db->fetchOne("SELECT slug FROM products WHERE id = ?", [$productId]);
-        $this->redirect('product/' . $product['slug']);
+        echo json_encode(['success' => true]);
     }
 
     /**

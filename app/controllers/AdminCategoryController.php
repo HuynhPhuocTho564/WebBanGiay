@@ -50,7 +50,7 @@ class AdminCategoryController extends Controller
             return;
         }
 
-        // BUG #16 FIX: Kiểm tra tên trùng (không phân biệt hoa thường)
+        // Kiểm tra tên trùng (không phân biệt hoa thường)
         $exists = $this->db->fetchOne("SELECT id FROM categories WHERE LOWER(name) = LOWER(?)", [$name]);
         if ($exists) {
             Session::flash('error', 'Tên danh mục đã tồn tại');
@@ -58,11 +58,9 @@ class AdminCategoryController extends Controller
             return;
         }
 
-        $slug = $this->createSlug($name);
-
         $this->db->insert('categories', [
             'name' => $name,
-            'slug' => $slug,
+            'slug' => createSlug($name),
             'status' => 1
         ]);
 
@@ -88,7 +86,7 @@ class AdminCategoryController extends Controller
             return;
         }
 
-        // BUG #16 FIX: Kiểm tra tên trùng (loại trừ chính nó)
+        // Kiểm tra tên trùng (loại trừ chính nó)
         $exists = $this->db->fetchOne("SELECT id FROM categories WHERE LOWER(name) = LOWER(?) AND id != ?", [$name, $id]);
         if ($exists) {
             Session::flash('error', 'Tên danh mục đã tồn tại');
@@ -96,12 +94,11 @@ class AdminCategoryController extends Controller
             return;
         }
 
-        $slug = $this->createSlug($name);
         $status = $this->input('status') ? 1 : 0;
 
         $this->db->update('categories', [
             'name' => $name,
-            'slug' => $slug,
+            'slug' => createSlug($name),
             'status' => $status
         ], 'id = ?', [$id]);
 
@@ -125,20 +122,5 @@ class AdminCategoryController extends Controller
         $this->db->query("DELETE FROM categories WHERE id = ?", [$id]);
         Session::flash('success', 'Xóa danh mục thành công');
         $this->redirect('admincategory');
-    }
-
-    private function createSlug(string $str): string
-    {
-        $str = mb_strtolower($str, 'UTF-8');
-        $str = preg_replace('/[áàảãạăắằẳẵặâấầẩẫậ]/u', 'a', $str);
-        $str = preg_replace('/[éèẻẽẹêếềểễệ]/u', 'e', $str);
-        $str = preg_replace('/[íìỉĩị]/u', 'i', $str);
-        $str = preg_replace('/[óòỏõọôốồổỗộơớờởỡợ]/u', 'o', $str);
-        $str = preg_replace('/[úùủũụưứừửữự]/u', 'u', $str);
-        $str = preg_replace('/[ýỳỷỹỵ]/u', 'y', $str);
-        $str = preg_replace('/đ/u', 'd', $str);
-        $str = preg_replace('/[^a-z0-9\s-]/', '', $str);
-        $str = preg_replace('/[\s-]+/', '-', $str);
-        return trim($str, '-');
     }
 }

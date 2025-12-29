@@ -132,7 +132,7 @@ class AdminProductController extends Controller
 
         $data = [
             'name' => $name,
-            'slug' => $this->createSlug($name),
+            'slug' => createSlug($name),
             'category_id' => $this->input('category_id') ?: null,
             'brand_id' => $this->input('brand_id') ?: null,
             'price' => $price,
@@ -250,7 +250,7 @@ class AdminProductController extends Controller
 
         $data = [
             'name' => $name,
-            'slug' => $this->createSlug($name),
+            'slug' => createSlug($name),
             'category_id' => $this->input('category_id') ?: null,
             'brand_id' => $this->input('brand_id') ?: null,
             'price' => $price,
@@ -300,24 +300,6 @@ class AdminProductController extends Controller
         
         Session::flash('success', 'Xóa sản phẩm thành công');
         $this->redirect('adminproduct');
-    }
-
-    /**
-     * Tạo slug từ tên
-     */
-    private function createSlug(string $str): string
-    {
-        $str = mb_strtolower($str, 'UTF-8');
-        $str = preg_replace('/[áàảãạăắằẳẵặâấầẩẫậ]/u', 'a', $str);
-        $str = preg_replace('/[éèẻẽẹêếềểễệ]/u', 'e', $str);
-        $str = preg_replace('/[íìỉĩị]/u', 'i', $str);
-        $str = preg_replace('/[óòỏõọôốồổỗộơớờởỡợ]/u', 'o', $str);
-        $str = preg_replace('/[úùủũụưứừửữự]/u', 'u', $str);
-        $str = preg_replace('/[ýỳỷỹỵ]/u', 'y', $str);
-        $str = preg_replace('/đ/u', 'd', $str);
-        $str = preg_replace('/[^a-z0-9\s-]/', '', $str);
-        $str = preg_replace('/[\s-]+/', '-', $str);
-        return trim($str, '-');
     }
 
     /**

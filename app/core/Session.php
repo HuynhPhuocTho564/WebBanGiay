@@ -6,12 +6,16 @@
 
 class Session
 {
-    // BUG #21 FIX: Session timeout (30 phút)
-    private const SESSION_TIMEOUT = 1800; // 30 minutes
+    // Role constants - tránh magic numbers
+    public const ROLE_CUSTOMER = 0;
+    public const ROLE_STAFF = 1;
+    public const ROLE_ADMIN = 2;
+
+    // Session timeout (30 phút)
+    private const SESSION_TIMEOUT = 1800;
 
     /**
-     * Khởi tạo session
-     * BUG #21 FIX: Thêm session timeout
+     * Khởi tạo session với timeout check
      */
     public static function start(): void
     {
@@ -22,13 +26,11 @@ class Session
         // Kiểm tra session timeout
         if (isset($_SESSION['last_activity'])) {
             if (time() - $_SESSION['last_activity'] > self::SESSION_TIMEOUT) {
-                // Session hết hạn - đăng xuất
                 self::logout();
                 self::flash('warning', 'Phiên làm việc đã hết hạn. Vui lòng đăng nhập lại.');
             }
         }
         
-        // Cập nhật thời gian hoạt động
         $_SESSION['last_activity'] = time();
     }
 
@@ -168,7 +170,7 @@ class Session
      */
     public static function isAdmin(): bool
     {
-        return self::role() === 2;
+        return self::role() === self::ROLE_ADMIN;
     }
 
     /**
@@ -176,7 +178,7 @@ class Session
      */
     public static function isStaff(): bool
     {
-        return self::role() === 1;
+        return self::role() === self::ROLE_STAFF;
     }
 
     /**
@@ -184,6 +186,6 @@ class Session
      */
     public static function canAccessAdmin(): bool
     {
-        return self::role() >= 1;
+        return self::role() >= self::ROLE_STAFF;
     }
 }

@@ -147,9 +147,9 @@ function orderStatus(string $status): array
 function roleName(int $role): string
 {
     $roles = [
-        0 => 'Khách hàng',
-        1 => 'Nhân viên',
-        2 => 'Admin'
+        Session::ROLE_CUSTOMER => 'Khách hàng',
+        Session::ROLE_STAFF => 'Nhân viên',
+        Session::ROLE_ADMIN => 'Admin'
     ];
     return $roles[$role] ?? 'Không xác định';
 }

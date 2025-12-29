@@ -93,6 +93,7 @@
                 <!-- Color Selection -->
                 <?php 
                 $colors = array_unique(array_column($variants, 'color'));
+                $hasVariants = !empty($variants);
                 if (!empty($colors)):
                 ?>
                 <div>
@@ -100,7 +101,7 @@
                     <div class="flex flex-wrap gap-2">
                         <?php foreach ($colors as $color): ?>
                         <label class="cursor-pointer">
-                            <input type="radio" name="color" value="<?= $color ?>" class="hidden peer" required
+                            <input type="radio" name="color" value="<?= $color ?>" class="hidden peer"
                                    onchange="updateVariant()">
                             <span class="inline-block px-4 py-2 border-2 rounded-lg text-sm peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white transition">
                                 <?= $color ?>
@@ -127,7 +128,7 @@
                     <div class="flex flex-wrap gap-2" id="sizeOptions">
                         <?php foreach ($sizes as $size): ?>
                         <label class="cursor-pointer size-option" data-size="<?= $size ?>">
-                            <input type="radio" name="size" value="<?= $size ?>" class="hidden peer" required
+                            <input type="radio" name="size" value="<?= $size ?>" class="hidden peer"
                                    onchange="updateVariant()">
                             <span class="inline-flex items-center justify-center w-12 h-12 border-2 rounded-lg text-sm font-medium peer-checked:border-primary peer-checked:bg-primary peer-checked:text-white peer-disabled:bg-gray-100 peer-disabled:text-gray-400 peer-disabled:cursor-not-allowed transition">
                                 <?= $size ?>
@@ -259,8 +260,8 @@
                 <?php if (Session::isLoggedIn()): ?>
                 <div class="mb-8 p-4 bg-gray-50 rounded-xl">
                     <h4 class="font-bold mb-4">Viết đánh giá của bạn</h4>
-                    <form action="<?= BASE_URL ?>/home/addReview" method="POST">
-                        <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
+                    <form id="reviewForm">
+                        <input type="hidden" name="product_id" value="<?= $productDetail['id'] ?? $product['id'] ?>">
                         <div class="mb-4">
                             <label class="block text-sm font-medium mb-2">Đánh giá</label>
                             <div class="flex gap-2" id="ratingStars">
@@ -274,7 +275,7 @@
                         </div>
                         <div class="mb-4">
                             <label class="block text-sm font-medium mb-2">Nhận xét</label>
-                            <textarea name="comment" rows="3" required placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."
+                            <textarea name="comment" id="reviewComment" rows="3" required placeholder="Chia sẻ trải nghiệm của bạn về sản phẩm..."
                                       class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-accent"></textarea>
                         </div>
                         <button type="submit" class="px-6 py-2 bg-accent text-white rounded-lg hover:bg-red-600">
@@ -446,20 +447,30 @@ function closeSizeGuide() {
 }
 
 // Add to cart
-document.getElementById('addToCartForm').addEventListener('submit', function(e) {
+document.getElementById('addToCartForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
-    if (!selectedVariant) {
+    
+    // Kiểm tra nếu có variants thì phải chọn
+    const hasVariants = variants && variants.length > 0;
+    if (hasVariants && !selectedVariant) {
         showToast('Vui lòng chọn màu sắc và size', 'error');
         return;
     }
     
     const quantity = document.getElementById('quantity').value;
+    const variantId = selectedVariant ? selectedVariant.id : (variants[0]?.id || 0);
+    
+    if (!variantId) {
+        showToast('Sản phẩm không có sẵn', 'error');
+        return;
+    }
+    
     showLoading();
     
     fetch('<?= BASE_URL ?>/cart/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `variant_id=${selectedVariant.id}&quantity=${quantity}`
+        body: `variant_id=${variantId}&quantity=${quantity}`
     })
     .then(res => res.json())
     .then(data => {
@@ -483,18 +494,27 @@ document.getElementById('addToCartForm').addEventListener('submit', function(e) 
 });
 
 function buyNow() {
-    if (!selectedVariant) {
+    // Kiểm tra nếu có variants thì phải chọn
+    const hasVariants = variants && variants.length > 0;
+    if (hasVariants && !selectedVariant) {
         showToast('Vui lòng chọn màu sắc và size', 'error');
         return;
     }
     
     const quantity = document.getElementById('quantity').value;
+    const variantId = selectedVariant ? selectedVariant.id : (variants[0]?.id || 0);
+    
+    if (!variantId) {
+        showToast('Sản phẩm không có sẵn', 'error');
+        return;
+    }
+    
     showLoading();
     
     fetch('<?= BASE_URL ?>/cart/add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `variant_id=${selectedVariant.id}&quantity=${quantity}`
+        body: `variant_id=${variantId}&quantity=${quantity}`
     })
     .then(res => res.json())
     .then(data => {
@@ -515,8 +535,13 @@ function buyNow() {
 
 // Rating stars
 function setRating(rating) {
-    document.getElementById('ratingInput').value = rating;
+    const ratingInput = document.getElementById('ratingInput');
     const stars = document.querySelectorAll('#ratingStars button');
+    
+    // Kiểm tra element tồn tại trước khi set
+    if (!ratingInput || !stars.length) return;
+    
+    ratingInput.value = rating;
     stars.forEach((star, index) => {
         if (index < rating) {
             star.classList.remove('text-gray-300');
@@ -527,8 +552,10 @@ function setRating(rating) {
         }
     });
 }
-// Set default 5 stars
-setRating(5);
+// Set default 5 stars (chỉ khi đã đăng nhập)
+if (document.getElementById('ratingInput')) {
+    setRating(5);
+}
 
 // Wishlist
 function addToWishlist(productId) {
@@ -648,5 +675,39 @@ imageContainer?.addEventListener('mousemove', function(e) {
     
     magnifier.style.backgroundSize = `${bgWidth}px ${bgHeight}px`;
     magnifier.style.backgroundPosition = `${bgX}px ${bgY}px`;
+});
+
+// Review form AJAX submit
+document.getElementById('reviewForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const productId = this.querySelector('input[name="product_id"]').value;
+    const rating = document.getElementById('ratingInput').value;
+    const comment = document.getElementById('reviewComment').value.trim();
+    
+    if (!comment) {
+        showToast('Vui lòng nhập nhận xét', 'error');
+        return;
+    }
+    
+    fetch('<?= BASE_URL ?>/home/addReview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `product_id=${productId}&rating=${rating}&comment=${encodeURIComponent(comment)}`
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            // Reload trang để hiển thị review mới
+            location.reload();
+        } else if (data.requireLogin) {
+            window.location.href = '<?= BASE_URL ?>/auth/login';
+        } else {
+            showToast(data.message || 'Có lỗi xảy ra', 'error');
+        }
+    })
+    .catch(() => {
+        showToast('Có lỗi xảy ra', 'error');
+    });
 });
 </script>
