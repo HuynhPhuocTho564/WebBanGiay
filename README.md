@@ -2,123 +2,123 @@
 
 Website thương mại điện tử bán giày sneaker với PHP Native + MySQL + Tailwind CSS.
 
-## 📋 Yêu Cầu Hệ Thống
+---
 
-- **XAMPP** (PHP 8.0+, MySQL 8.0+, Apache)
-- **Trình duyệt** hiện đại (Chrome, Firefox, Edge)
+## 🚀 HƯỚNG DẪN CHẠY WEBSITE
 
-## 🚀 Hướng Dẫn Cài Đặt
+### Bước 1: Cài đặt XAMPP
 
-### Bước 1: Clone/Copy Project
+1. Tải XAMPP tại: https://www.apachefriends.org/download.html
+2. Cài đặt XAMPP (khuyến nghị: `D:\xampp`)
+3. Mở **XAMPP Control Panel**
 
-Copy thư mục project vào `C:\xampp\htdocs\shop_giay_project`
+### Bước 2: Copy Project
 
-### Bước 2: Tạo Database
-
-1. Mở **phpMyAdmin**: http://localhost/phpmyadmin
-2. Tạo database mới: `shop_giay_db`
-3. Chọn Collation: `utf8mb4_unicode_ci`
-
-### Bước 3: Import Database
-
-1. Chọn database `shop_giay_db`
-2. Vào tab **Import**
-3. Chọn file `database/schema.sql`
-4. Click **Import**
-
-### Bước 4: Cấu Hình Database
-
-Mở file `config/config.php` và sửa thông tin:
-
-```php
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'shop_giay_db');
-define('DB_USER', 'root');
-define('DB_PASS', '');  // Mật khẩu MySQL của bạn
+Copy thư mục `shop_giay_project` vào:
+```
+D:\xampp\htdocs\shop_giay_project
 ```
 
-### Bước 5: Chạy Website
+### Bước 3: Khởi động Server
 
-1. Khởi động **Apache** và **MySQL** trong XAMPP
-2. Truy cập: http://localhost/shop_giay_project/public/
+Trong **XAMPP Control Panel**:
+1. Click **Start** ở dòng **Apache** → chờ chuyển xanh
+2. Click **Start** ở dòng **MySQL** → chờ chuyển xanh
 
-## 🔐 Tài Khoản Mặc Định
+![XAMPP](https://i.imgur.com/example.png)
 
-| Vai trò | Username | Mật khẩu |
-|---------|----------|----------|
-| Admin | `admin` | `123456` |
-| Nhân viên | `staff` | `123456` |
+### Bước 4: Tạo Database
 
-## 📁 Cấu Trúc Thư Mục
+1. Mở trình duyệt → truy cập: **http://localhost/phpmyadmin**
+2. Click **New** (bên trái)
+3. Database name: `shop_giay_db`
+4. Collation: `utf8mb4_unicode_ci`
+5. Click **Create**
+
+### Bước 5: Import Database
+
+1. Click chọn database `shop_giay_db` (bên trái)
+2. Click tab **Import** (trên cùng)
+3. Click **Choose File** → chọn file `database/schema.sql`
+4. Kéo xuống dưới → Click **Import**
+5. Chờ thông báo "Import has been successfully finished"
+
+### Bước 6: Mở Website
+
+Mở trình duyệt và truy cập:
+
+```
+http://localhost/shop_giay_project/public/
+```
+
+✅ **Done!** Website đã chạy.
+
+---
+
+## 🔐 TÀI KHOẢN ĐĂNG NHẬP
+
+| Vai trò | Username | Password | Quyền |
+|---------|----------|----------|-------|
+| Admin | `admin` | `123456` | Toàn quyền |
+| Nhân viên | `staff` | `123456` | Hạn chế |
+| Khách hàng | `user1` | `123456` | Mua hàng |
+
+---
+
+## 🔗 CÁC TRANG CHÍNH
+
+| Trang | URL |
+|-------|-----|
+| Trang chủ | http://localhost/shop_giay_project/public/ |
+| Sản phẩm | http://localhost/shop_giay_project/public/home/products |
+| Đăng nhập | http://localhost/shop_giay_project/public/auth/login |
+| Admin Panel | http://localhost/shop_giay_project/public/admin |
+
+---
+
+## ❌ XỬ LÝ LỖI
+
+### Lỗi "404 Not Found"
+→ Bật mod_rewrite: Mở `D:\xampp\apache\conf\httpd.conf`, tìm dòng `#LoadModule rewrite_module`, xóa dấu `#`, restart Apache.
+
+### Lỗi "Access denied for user 'root'"
+→ Sửa password trong `config/config.php`
+
+### Lỗi "Database doesn't exist"
+→ Làm lại Bước 4, 5
+
+---
+
+## � CẤờU TRÚC
 
 ```
 shop_giay_project/
 ├── app/
 │   ├── controllers/    # Xử lý logic
-│   ├── models/         # Tương tác database
-│   ├── core/           # Framework core
+│   ├── models/         # Database
+│   ├── core/           # Framework
 │   └── helpers/        # Hàm tiện ích
 ├── config/             # Cấu hình
 ├── database/           # File SQL
-├── public/             # Entry point + assets
-├── views/              # Giao diện
-└── vendor/             # Thư viện
+├── public/             # Entry point
+└── views/              # Giao diện
 ```
 
-## ✨ Tính Năng
+---
 
-### Khách hàng
-- Xem sản phẩm, tìm kiếm, lọc
-- Giỏ hàng, đặt hàng
-- Mã giảm giá
-- Quản lý đơn hàng
-- Yêu thích sản phẩm
-- Đăng nhập Google
+## ✨ TÍNH NĂNG
 
-### Admin
-- Dashboard thống kê
-- Quản lý sản phẩm, danh mục, thương hiệu
-- Quản lý đơn hàng
-- Quản lý người dùng
-- Quản lý mã giảm giá
-- Báo cáo doanh thu
+**Khách hàng:** Xem sản phẩm, tìm kiếm, lọc, giỏ hàng, đặt hàng, mã giảm giá, yêu thích, đăng nhập Google
 
-### Nhân viên
-- Dashboard (không xem doanh thu)
-- Quản lý sản phẩm (không xóa)
-- Quản lý đơn hàng
-- Quản lý danh mục, thương hiệu
+**Admin:** Dashboard, quản lý sản phẩm/danh mục/thương hiệu/đơn hàng/user/mã giảm giá, báo cáo doanh thu
 
-## 🔗 Đường Dẫn
+**Nhân viên:** Như Admin nhưng không xem doanh thu, không xóa
 
-| Trang | URL |
-|-------|-----|
-| Trang chủ | `/public/` |
-| Sản phẩm | `/public/products` |
-| Đăng nhập | `/public/auth/login` |
-| Admin | `/public/admin` |
+---
 
-## ⚙️ Cấu Hình Google Login (Tùy chọn)
+## 👨‍💻 CÔNG NGHỆ
 
-1. Tạo project tại [Google Cloud Console](https://console.cloud.google.com)
-2. Tạo OAuth 2.0 credentials
-3. Sửa file `config/google_config.php`:
-
-```php
-define('GOOGLE_CLIENT_ID', 'your-client-id');
-define('GOOGLE_CLIENT_SECRET', 'your-client-secret');
-define('GOOGLE_REDIRECT_URI', 'http://localhost/shop_giay_project/public/auth/googleCallback');
-```
-
-## 📝 Ghi Chú
-
-- Đảm bảo `mod_rewrite` đã bật trong Apache
-- Thư mục `public/uploads` cần quyền ghi (777 hoặc 755)
-- Nếu lỗi 404, kiểm tra file `.htaccess`
-
-## 👨‍💻 Công Nghệ
-
-- **Backend:** PHP 8.0 Native (MVC Pattern)
-- **Database:** MySQL 8.0
-- **Frontend:** Tailwind CSS, JavaScript
-- **Icons:** Heroicons, Font Awesome
+- PHP 8.0 Native (MVC)
+- MySQL 8.0
+- Tailwind CSS
+- JavaScript
