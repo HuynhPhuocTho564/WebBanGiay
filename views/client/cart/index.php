@@ -1,3 +1,15 @@
+<style>
+/* Ẩn mũi tên spinner của input number */
+.qty-input::-webkit-outer-spin-button,
+.qty-input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+.qty-input[type=number] {
+    -moz-appearance: textfield;
+}
+</style>
+
 <div class="container mx-auto px-4 py-6">
     <!-- Breadcrumb -->
     <nav class="text-sm mb-6">
@@ -8,7 +20,7 @@
         </ol>
     </nav>
 
-    <h1 class="text-2xl font-bold mb-6">Giỏ hàng của bạn</h1>
+    <h1 class="text-2xl md:text-3xl font-bold mb-6">Giỏ hàng của bạn</h1>
 
     <?php if (empty($cartItems)): ?>
     <!-- Empty Cart -->
@@ -17,8 +29,8 @@
             <i class="fas fa-shopping-cart text-4xl text-gray-300"></i>
         </div>
         <h2 class="text-xl font-bold text-gray-700 mb-2">Giỏ hàng trống</h2>
-        <p class="text-gray-500 mb-6">Bạn chưa có sản phẩm nào trong giỏ hàng</p>
-        <a href="<?= BASE_URL ?>/home/products" class="inline-block px-8 py-3 bg-accent text-white rounded-full hover:bg-red-600 transition font-medium">
+        <p class="text-base text-gray-500 mb-6">Bạn chưa có sản phẩm nào trong giỏ hàng</p>
+        <a href="<?= BASE_URL ?>/home/products" class="inline-block px-8 py-3 bg-accent text-white rounded-full hover:bg-red-600 transition font-medium text-base">
             <i class="fas fa-shopping-bag mr-2"></i>Khám phá sản phẩm
         </a>
     </div>
@@ -48,23 +60,25 @@
         <div class="flex-1">
             <div class="bg-white rounded-xl shadow-sm overflow-hidden">
                 <!-- Header -->
-                <div class="hidden md:grid grid-cols-12 gap-4 p-4 bg-gray-50 text-sm font-medium text-gray-600">
+                <div class="hidden md:grid grid-cols-12 gap-4 p-4 bg-gray-50 text-base font-medium text-gray-600">
                     <div class="col-span-1">
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="w-4 h-4 rounded">
+                            <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="w-5 h-5 rounded">
                             <span>Chọn</span>
                         </label>
                     </div>
                     <div class="col-span-5">Sản phẩm</div>
-                    <div class="col-span-2 text-center">Đơn giá</div>
+                    <div class="col-span-3 text-center">Đơn giá</div>
                     <div class="col-span-2 text-center">Số lượng</div>
-                    <div class="col-span-2 text-right">Thành tiền</div>
+                    <div class="col-span-1 text-center">Xóa</div>
                 </div>
 
                 <!-- Items -->
                 <div class="divide-y">
-                    <?php foreach ($cartItems as $item): ?>
-                    <div class="p-4 cart-item" data-variant-id="<?= $item['id'] ?>" data-price="<?= $item['final_price'] ?>" data-quantity="<?= $item['quantity'] ?>">
+                    <?php foreach ($cartItems as $item): 
+                        $hasDiscount = $item['discount_price'] > 0 && $item['discount_price'] < $item['price'];
+                    ?>
+                    <div class="p-4 md:p-5 cart-item" data-variant-id="<?= $item['id'] ?>" data-price="<?= $item['final_price'] ?>" data-quantity="<?= $item['quantity'] ?>">
                         <div class="grid grid-cols-12 gap-4 items-center">
                             <!-- Checkbox -->
                             <div class="col-span-2 md:col-span-1">
@@ -76,16 +90,16 @@
                                 <div class="flex gap-4">
                                     <a href="<?= BASE_URL ?>/home/product/<?= $item['slug'] ?>" class="flex-shrink-0">
                                         <img src="<?= productImage($item['thumbnail']) ?>" alt="<?= $item['name'] ?>" 
-                                             class="w-20 h-20 object-cover rounded-lg">
+                                             class="w-24 h-24 object-cover rounded-lg">
                                     </a>
                                     <div class="flex-1 min-w-0">
                                         <a href="<?= BASE_URL ?>/home/product/<?= $item['slug'] ?>" 
-                                           class="font-medium hover:text-accent line-clamp-2"><?= htmlspecialchars($item['name']) ?></a>
-                                        <p class="text-sm text-gray-500 mt-1">
+                                           class="text-base font-medium hover:text-accent line-clamp-2"><?= htmlspecialchars($item['name']) ?></a>
+                                        <p class="text-sm text-gray-500 mt-2">
                                             <?= $item['color'] ?> / Size <?= $item['size'] ?>
                                         </p>
                                         <button onclick="removeItem(<?= $item['id'] ?>)" 
-                                                class="text-sm text-red-500 hover:underline mt-1 md:hidden">
+                                                class="text-sm text-red-500 hover:underline mt-2 md:hidden">
                                             <i class="fas fa-trash mr-1"></i> Xóa
                                         </button>
                                     </div>
@@ -93,30 +107,35 @@
                             </div>
 
                             <!-- Price -->
-                            <div class="col-span-4 md:col-span-2 text-center">
+                            <div class="col-span-4 md:col-span-3 text-center">
                                 <span class="md:hidden text-sm text-gray-500">Đơn giá: </span>
-                                <span class="text-accent font-medium"><?= formatMoney($item['final_price']) ?></span>
+                                <?php if ($hasDiscount): ?>
+                                <span class="text-accent font-bold text-lg"><?= formatMoney($item['discount_price']) ?></span>
+                                <div>
+                                    <span class="text-gray-400 line-through text-sm"><?= formatMoney($item['price']) ?></span>
+                                </div>
+                                <?php else: ?>
+                                <span class="text-accent font-bold text-lg"><?= formatMoney($item['price']) ?></span>
+                                <?php endif; ?>
                             </div>
 
                             <!-- Quantity -->
                             <div class="col-span-4 md:col-span-2">
-                                <div class="flex items-center justify-center gap-1">
+                                <div class="flex items-center justify-center gap-2">
                                     <button onclick="updateQty(<?= $item['id'] ?>, -1)" 
-                                            class="w-8 h-8 border rounded hover:bg-gray-100">-</button>
+                                            class="w-9 h-9 border rounded-lg hover:bg-gray-100 text-lg">-</button>
                                     <input type="number" value="<?= $item['quantity'] ?>" min="1" max="<?= $item['stock_quantity'] ?>"
-                                           class="w-12 h-8 text-center border rounded qty-input"
+                                           class="w-14 h-9 text-center border rounded-lg qty-input text-base"
                                            onchange="updateQtyDirect(<?= $item['id'] ?>, this.value)">
                                     <button onclick="updateQty(<?= $item['id'] ?>, 1)" 
-                                            class="w-8 h-8 border rounded hover:bg-gray-100">+</button>
+                                            class="w-9 h-9 border rounded-lg hover:bg-gray-100 text-lg">+</button>
                                 </div>
                             </div>
 
-                            <!-- Subtotal -->
-                            <div class="col-span-4 md:col-span-2 text-right">
-                                <span class="md:hidden text-sm text-gray-500">Tổng: </span>
-                                <span class="font-bold text-accent item-subtotal"><?= formatMoney($item['subtotal']) ?></span>
+                            <!-- Delete -->
+                            <div class="col-span-4 md:col-span-1 text-center">
                                 <button onclick="removeItem(<?= $item['id'] ?>)" 
-                                        class="ml-2 text-gray-400 hover:text-red-500 hidden md:inline-block">
+                                        class="text-gray-400 hover:text-red-500 hidden md:inline-block text-lg">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -127,7 +146,7 @@
             </div>
 
             <!-- Actions -->
-            <div class="flex items-center justify-between mt-4">
+            <div class="flex items-center justify-between mt-4 text-base">
                 <a href="<?= BASE_URL ?>/home/products" class="text-accent hover:underline">
                     <i class="fas fa-arrow-left mr-1"></i> Tiếp tục mua sắm
                 </a>
@@ -138,67 +157,38 @@
         </div>
 
         <!-- Order Summary -->
-        <div class="lg:w-80">
+        <div class="lg:w-96">
             <div class="bg-white rounded-xl shadow-sm p-6 sticky top-24">
-                <h3 class="font-bold text-lg mb-4">Tóm tắt đơn hàng</h3>
+                <h3 class="font-bold text-xl mb-5">Tóm tắt đơn hàng</h3>
                 
-                <div class="space-y-3 text-sm">
+                <div class="space-y-4 text-base">
                     <div class="flex justify-between">
                         <span class="text-gray-500">Đã chọn</span>
-                        <span id="summaryCount">0 sản phẩm</span>
+                        <span id="summaryCount" class="font-medium">0 sản phẩm</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-500">Tạm tính</span>
-                        <span id="summarySubtotal">0đ</span>
+                        <span id="summarySubtotal" class="font-medium">0đ</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-gray-500">Phí vận chuyển</span>
-                        <span class="text-green-500">Miễn phí</span>
+                        <span class="text-green-500 font-medium">Miễn phí</span>
                     </div>
                 </div>
 
-                <hr class="my-4">
+                <hr class="my-5">
 
-                <div class="flex justify-between font-bold text-lg">
+                <div class="flex justify-between font-bold text-xl">
                     <span>Tổng cộng</span>
                     <span class="text-accent" id="summaryTotal">0đ</span>
                 </div>
 
                 <button onclick="proceedToCheckout()" id="checkoutBtn" disabled
-                   class="block w-full py-3 bg-gray-300 text-white text-center rounded-lg font-medium cursor-not-allowed transition mt-6">
+                   class="block w-full py-3.5 bg-gray-300 text-white text-center rounded-lg font-medium cursor-not-allowed transition mt-6 text-base">
                     Vui lòng chọn sản phẩm
                 </button>
 
-                <!-- Coupon -->
-                <div class="mt-4">
-                    <div class="flex gap-2">
-                        <input type="text" id="couponCode" placeholder="Mã giảm giá" 
-                               class="flex-1 px-3 py-2 border rounded-lg text-sm focus:outline-none focus:border-accent">
-                        <button onclick="applyCouponCart()" class="px-4 py-2 border rounded-lg text-sm hover:bg-gray-50">Áp dụng</button>
-                    </div>
-                    <?php 
-                    $availableCoupons = Database::getInstance()->fetchAll(
-                        "SELECT * FROM coupons WHERE status = 1 AND start_date <= NOW() AND end_date >= NOW() AND usage_limit > 0 LIMIT 5"
-                    );
-                    if (!empty($availableCoupons)): 
-                    ?>
-                    <button type="button" onclick="toggleCartCoupons()" class="text-sm text-accent hover:underline mt-2">
-                        <i class="fas fa-tags mr-1"></i> Xem mã giảm giá
-                    </button>
-                    <div id="cartCouponList" class="hidden mt-2 space-y-2 max-h-40 overflow-y-auto">
-                        <?php foreach ($availableCoupons as $c): ?>
-                        <div class="p-2 border rounded text-xs cursor-pointer hover:border-accent" onclick="selectCartCoupon('<?= $c['code'] ?>')">
-                            <div class="flex justify-between">
-                                <span class="font-mono font-bold"><?= $c['code'] ?></span>
-                                <span class="text-accent"><?= $c['discount_type'] === 'percent' ? '-'.$c['discount_value'].'%' : '-'.number_format($c['discount_value'],0,',','.').'đ' ?></span>
-                            </div>
-                            <p class="text-gray-500">Đơn từ <?= number_format($c['min_order_value'],0,',','.') ?>đ</p>
-                        </div>
-                        <?php endforeach; ?>
-                    </div>
-                    <?php endif; ?>
-                    <p id="couponMsg" class="text-sm mt-2 hidden"></p>
-                </div>
+
             </div>
         </div>
     </div>
@@ -207,6 +197,17 @@
 
 
 <script>
+// Khởi tạo khi trang load - bỏ tick tất cả và reset tổng tiền
+document.addEventListener('DOMContentLoaded', function() {
+    // Bỏ tick tất cả checkbox
+    document.querySelectorAll('.item-checkbox').forEach(cb => cb.checked = false);
+    const selectAll = document.getElementById('selectAll');
+    if (selectAll) selectAll.checked = false;
+    
+    // Reset tổng tiền
+    updateSelectedTotal();
+});
+
 // Chọn tất cả
 function toggleSelectAll() {
     const selectAll = document.getElementById('selectAll');
@@ -218,20 +219,20 @@ function toggleSelectAll() {
 // Cập nhật tổng tiền theo sản phẩm đã chọn
 function updateSelectedTotal() {
     const checkboxes = document.querySelectorAll('.item-checkbox:checked');
-    let total = 0;
+    let subtotal = 0;
     let count = 0;
     
     checkboxes.forEach(cb => {
         const item = cb.closest('.cart-item');
         const price = parseFloat(item.dataset.price);
         const qty = parseInt(item.querySelector('.qty-input').value);
-        total += price * qty;
+        subtotal += price * qty;
         count += qty;
     });
     
     document.getElementById('summaryCount').textContent = checkboxes.length + ' sản phẩm';
-    document.getElementById('summarySubtotal').textContent = formatMoney(total);
-    document.getElementById('summaryTotal').textContent = formatMoney(total);
+    document.getElementById('summarySubtotal').textContent = formatMoney(subtotal);
+    document.getElementById('summaryTotal').textContent = formatMoney(subtotal);
     
     // Cập nhật nút thanh toán
     const checkoutBtn = document.getElementById('checkoutBtn');
@@ -267,6 +268,7 @@ function proceedToCheckout() {
     showLoading();
     
     const selectedIds = Array.from(checkboxes).map(cb => cb.value);
+    console.log('Selected IDs:', selectedIds);
     
     // Gửi danh sách đã chọn lên server
     fetch('<?= BASE_URL ?>/checkout/setSelectedItems', {
@@ -276,9 +278,18 @@ function proceedToCheckout() {
     })
     .then(res => res.json())
     .then(data => {
+        console.log('Response:', data);
         if (data.success) {
             window.location.href = '<?= BASE_URL ?>/checkout';
+        } else {
+            hideLoading();
+            showToast(data.message || 'Có lỗi xảy ra', 'error');
         }
+    })
+    .catch(err => {
+        console.error('Error:', err);
+        // Vẫn chuyển đến checkout nếu có lỗi AJAX
+        window.location.href = '<?= BASE_URL ?>/checkout';
     });
 }
 
@@ -337,26 +348,5 @@ function clearCart() {
     if (!confirm('Bạn có chắc muốn xóa toàn bộ giỏ hàng?')) return;
     showLoading();
     window.location.href = '<?= BASE_URL ?>/cart/clear';
-}
-
-// Coupon functions
-function toggleCartCoupons() {
-    document.getElementById('cartCouponList').classList.toggle('hidden');
-}
-
-function selectCartCoupon(code) {
-    document.getElementById('couponCode').value = code;
-    document.getElementById('cartCouponList').classList.add('hidden');
-}
-
-function applyCouponCart() {
-    const code = document.getElementById('couponCode').value.trim();
-    if (!code) {
-        showToast('Vui lòng nhập mã giảm giá', 'error');
-        return;
-    }
-    // Lưu mã và chuyển đến checkout
-    sessionStorage.setItem('couponCode', code);
-    window.location.href = '<?= BASE_URL ?>/checkout';
 }
 </script>

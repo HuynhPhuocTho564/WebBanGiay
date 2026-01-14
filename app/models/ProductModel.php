@@ -102,12 +102,18 @@ class ProductModel
             $params[] = $searchTerm;
         }
 
+        // Filter sản phẩm đang sale
+        if (($filters['sort'] ?? '') === 'sale') {
+            $sql .= " AND p.discount_price > 0 AND p.discount_price < p.price";
+        }
+
         // Sắp xếp
         $orderBy = match ($filters['sort'] ?? 'newest') {
             'price_asc' => 'CASE WHEN p.discount_price > 0 THEN p.discount_price ELSE p.price END ASC',
             'price_desc' => 'CASE WHEN p.discount_price > 0 THEN p.discount_price ELSE p.price END DESC',
             'popular' => 'p.views DESC',
             'name' => 'p.name ASC',
+            'sale' => '(p.price - p.discount_price) DESC', // Giảm nhiều nhất trước
             default => 'p.created_at DESC'
         };
         $sql .= " ORDER BY {$orderBy} LIMIT ? OFFSET ?";
@@ -152,6 +158,11 @@ class ProductModel
             $searchTerm = "%{$filters['search']}%";
             $params[] = $searchTerm;
             $params[] = $searchTerm;
+        }
+
+        // Filter sản phẩm đang sale
+        if (($filters['sort'] ?? '') === 'sale') {
+            $sql .= " AND p.discount_price > 0 AND p.discount_price < p.price";
         }
 
         return $this->db->count($sql, $params);

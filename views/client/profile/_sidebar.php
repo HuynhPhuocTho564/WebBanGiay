@@ -19,21 +19,18 @@ $currentUrl = $_GET['url'] ?? '';
                 <i class="fas fa-user w-5"></i>
                 <span>Tài khoản</span>
             </a>
+            <?php if (!Session::canAccessAdmin()): ?>
             <a href="<?= BASE_URL ?>/profile/orders" 
-               class="flex items-center gap-3 px-3 py-2 rounded-lg <?= $currentUrl === 'profile/orders' ? 'bg-accent/10 text-accent' : 'hover:bg-gray-100' ?>">
+               class="flex items-center gap-3 px-3 py-2 rounded-lg <?= strpos($currentUrl, 'profile/order') !== false ? 'bg-accent/10 text-accent' : 'hover:bg-gray-100' ?>">
                 <i class="fas fa-box w-5"></i>
                 <span>Đơn hàng</span>
-            </a>
-            <a href="<?= BASE_URL ?>/profile/purchaseHistory" 
-               class="flex items-center gap-3 px-3 py-2 rounded-lg <?= strpos($currentUrl, 'profile/purchaseHistory') !== false ? 'bg-accent/10 text-accent' : 'hover:bg-gray-100' ?>">
-                <i class="fas fa-history w-5"></i>
-                <span>Lịch sử mua hàng</span>
             </a>
             <a href="<?= BASE_URL ?>/profile/wishlist" 
                class="flex items-center gap-3 px-3 py-2 rounded-lg <?= strpos($currentUrl, 'profile/wishlist') !== false ? 'bg-accent/10 text-accent' : 'hover:bg-gray-100' ?>">
                 <i class="fas fa-heart w-5"></i>
                 <span>Yêu thích</span>
             </a>
+            <?php endif; ?>
             <hr class="my-2">
             <a href="<?= BASE_URL ?>/auth/logout" class="flex items-center gap-3 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50">
                 <i class="fas fa-sign-out-alt w-5"></i>

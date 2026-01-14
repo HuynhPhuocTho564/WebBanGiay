@@ -9,7 +9,8 @@ class AdminCategoryController extends Controller
     public function __construct()
     {
         parent::__construct();
-        Middleware::requireAdmin();
+        // Chỉ Admin mới được truy cập quản lý danh mục
+        Middleware::requireSuperAdmin();
     }
 
     /**
@@ -17,6 +18,9 @@ class AdminCategoryController extends Controller
      */
     public function index(): void
     {
+        // Staff chỉ được xem, không được thêm/sửa/xóa
+        $canEdit = Session::isAdmin();
+        
         $categories = $this->db->fetchAll(
             "SELECT c.*, (SELECT COUNT(*) FROM products WHERE category_id = c.id) as product_count 
              FROM categories c ORDER BY c.name"
@@ -24,7 +28,8 @@ class AdminCategoryController extends Controller
 
         $data = [
             'pageTitle' => 'Quản lý danh mục',
-            'categories' => $categories
+            'categories' => $categories,
+            'canEdit' => $canEdit
         ];
 
         $this->view('admin/layouts/header', $data);
@@ -33,11 +38,13 @@ class AdminCategoryController extends Controller
     }
 
     /**
-     * Thêm danh mục
+     * Thêm danh mục (Chỉ Admin)
      * BUG #16 FIX: Kiểm tra tên trùng
      */
     public function store(): void
     {
+        Middleware::requireSuperAdmin();
+        
         if (!$this->isPost()) {
             $this->redirect('admincategory');
         }
@@ -64,16 +71,21 @@ class AdminCategoryController extends Controller
             'status' => 1
         ]);
 
+        $categoryId = $this->db->lastInsertId();
+        logAction('create', "Tạo danh mục: $name", 'category', (int)$categoryId);
+
         Session::flash('success', 'Thêm danh mục thành công');
         $this->redirect('admincategory');
     }
 
     /**
-     * Cập nhật danh mục
+     * Cập nhật danh mục (Chỉ Admin)
      * BUG #16 FIX: Kiểm tra tên trùng
      */
     public function update(int $id = 0): void
     {
+        Middleware::requireSuperAdmin();
+        
         if (!$this->isPost()) {
             $this->redirect('admincategory');
         }
@@ -102,15 +114,18 @@ class AdminCategoryController extends Controller
             'status' => $status
         ], 'id = ?', [$id]);
 
+        logAction('update', "Cập nhật danh mục: $name", 'category', $id);
+
         Session::flash('success', 'Cập nhật danh mục thành công');
         $this->redirect('admincategory');
     }
 
     /**
-     * Xóa danh mục
+     * Xóa danh mục (Chỉ Admin)
      */
     public function delete(int $id = 0): void
     {
+        Middleware::requireSuperAdmin();
         // Kiểm tra có sản phẩm không
         $count = $this->db->count("SELECT COUNT(*) FROM products WHERE category_id = ?", [$id]);
         
@@ -119,7 +134,11 @@ class AdminCategoryController extends Controller
             $this->redirect('admincategory');
         }
 
+        $category = $this->db->fetchOne("SELECT name FROM categories WHERE id = ?", [$id]);
         $this->db->query("DELETE FROM categories WHERE id = ?", [$id]);
+        
+        logAction('delete', "Xóa danh mục: " . ($category['name'] ?? "ID $id"), 'category', $id);
+        
         Session::flash('success', 'Xóa danh mục thành công');
         $this->redirect('admincategory');
     }

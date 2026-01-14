@@ -60,7 +60,9 @@
                     <td class="px-4 py-3"><?= $p['total_stock'] ?? 0 ?></td>
                     <td class="px-4 py-3 text-center">
                         <a href="<?= BASE_URL ?>/adminproduct/edit/<?= $p['id'] ?>" class="text-accent hover:underline mr-3">Sửa</a>
+                        <?php if (Session::isAdmin()): ?>
                         <a href="<?= BASE_URL ?>/adminproduct/delete/<?= $p['id'] ?>" onclick="return confirm('Xác nhận xóa?')" class="text-red-500 hover:underline">Xóa</a>
+                        <?php endif; ?>
                     </td>
                 </tr>
                 <?php endforeach; endif; ?>

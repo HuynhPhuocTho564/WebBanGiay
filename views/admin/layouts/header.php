@@ -78,6 +78,7 @@
                 <span>Sản phẩm</span>
             </a>
 
+            <?php if (Session::isAdmin()): ?>
             <a href="<?= BASE_URL ?>/admincategory" 
                class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition <?= isActive('admincategory') ? 'bg-white/10' : '' ?>">
                 <i class="fas fa-tags w-5"></i>
@@ -90,6 +91,13 @@
                 <span>Thương hiệu</span>
             </a>
 
+            <a href="<?= BASE_URL ?>/admincoupon" 
+               class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition <?= isActive('admincoupon') ? 'bg-white/10' : '' ?>">
+                <i class="fas fa-ticket-alt w-5"></i>
+                <span>Mã giảm giá</span>
+            </a>
+            <?php endif; ?>
+
             <?php if (Session::isAdmin()): ?>
             <p class="text-xs text-gray-500 uppercase tracking-wider pt-4 pb-2 px-4">Quản trị hệ thống</p>
             
@@ -99,27 +107,27 @@
                 <span>Người dùng</span>
             </a>
 
-            <a href="<?= BASE_URL ?>/admincoupon" 
-               class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition <?= isActive('admincoupon') ? 'bg-white/10' : '' ?>">
-                <i class="fas fa-ticket-alt w-5"></i>
-                <span>Mã giảm giá</span>
-            </a>
-
             <a href="<?= BASE_URL ?>/adminreport" 
                class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition <?= isActive('adminreport') ? 'bg-white/10' : '' ?>">
                 <i class="fas fa-chart-bar w-5"></i>
                 <span>Báo cáo</span>
             </a>
-            <?php endif; ?>
-        </nav>
 
-        <!-- Back to Site -->
-        <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-white/10">
-            <a href="<?= BASE_URL ?>" class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition text-gray-400">
-                <i class="fas fa-external-link-alt w-5"></i>
-                <span>Về trang chủ</span>
+            <a href="<?= BASE_URL ?>/adminaudit" 
+               class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition <?= isActive('adminaudit') ? 'bg-white/10' : '' ?>">
+                <i class="fas fa-history w-5"></i>
+                <span>Lịch sử hoạt động</span>
             </a>
-        </div>
+            <?php endif; ?>
+
+            <!-- Back to Site -->
+            <div class="pt-4 mt-4 border-t border-white/10">
+                <a href="<?= BASE_URL ?>" class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition text-gray-400">
+                    <i class="fas fa-external-link-alt w-5"></i>
+                    <span>Về trang chủ</span>
+                </a>
+            </div>
+        </nav>
     </aside>
 
     <!-- Main Content -->

@@ -66,22 +66,28 @@
                         </span>
                     </td>
                     <td class="px-4 py-3 text-center">
+                        <?php if ($user['id'] !== Session::userId()): ?>
                         <button onclick="toggleStatus(<?= $user['id'] ?>)" 
                                 class="status-btn-<?= $user['id'] ?> px-2 py-1 text-xs rounded-full <?= $user['status'] == 1 ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600' ?>">
                             <?= $user['status'] == 1 ? 'Hoạt động' : 'Đã khóa' ?>
                         </button>
+                        <?php else: ?>
+                        <span class="px-2 py-1 text-xs rounded-full bg-green-100 text-green-600">Hoạt động</span>
+                        <?php endif; ?>
                     </td>
                     <td class="px-4 py-3">
                         <div class="flex items-center justify-center gap-2">
+                            <?php if ($user['id'] !== Session::userId()): ?>
                             <a href="<?= BASE_URL ?>/adminuser/edit/<?= $user['id'] ?>" 
                                class="p-2 text-blue-500 hover:bg-blue-50 rounded-lg" title="Sửa">
                                 <i class="fas fa-edit"></i>
                             </a>
-                            <?php if ($user['id'] !== Session::userId()): ?>
                             <button onclick="deleteUser(<?= $user['id'] ?>)" 
                                     class="p-2 text-red-500 hover:bg-red-50 rounded-lg" title="Xóa">
                                 <i class="fas fa-trash"></i>
                             </button>
+                            <?php else: ?>
+                            <span class="text-xs text-gray-400">Tài khoản của bạn</span>
                             <?php endif; ?>
                         </div>
                     </td>

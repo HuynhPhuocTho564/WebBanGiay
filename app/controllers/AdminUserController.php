@@ -115,6 +115,11 @@ class AdminUserController extends Controller
             ]
         );
 
+        $userId = $this->db->lastInsertId();
+        
+        // Ghi log tạo người dùng
+        logAction('create', "Tạo người dùng mới: {$data['username']} ({$data['email']})", 'user', (int)$userId);
+
         Session::flash('success', 'Thêm người dùng thành công');
         $this->redirect('adminuser');
     }
@@ -124,6 +129,13 @@ class AdminUserController extends Controller
      */
     public function edit(int $id = 0): void
     {
+        // Không cho phép sửa chính mình
+        if ($id === Session::userId()) {
+            Session::flash('error', 'Không thể sửa tài khoản của chính bạn. Vui lòng vào Tài khoản để cập nhật thông tin cá nhân.');
+            $this->redirect('adminuser');
+            return;
+        }
+
         $user = $this->userModel->findById($id);
         
         if (!$user) {
@@ -156,6 +168,13 @@ class AdminUserController extends Controller
             $this->redirect('adminuser/edit/' . $id);
         }
 
+        // Không cho phép sửa chính mình
+        if ($id === Session::userId()) {
+            Session::flash('error', 'Không thể sửa tài khoản của chính bạn. Vui lòng vào Tài khoản để cập nhật thông tin cá nhân.');
+            $this->redirect('adminuser');
+            return;
+        }
+
         $user = $this->userModel->findById($id);
         
         $updateData = [
@@ -180,6 +199,9 @@ class AdminUserController extends Controller
         }
 
         $this->userModel->update($id, $updateData);
+
+        // Ghi log cập nhật người dùng
+        logAction('update', "Cập nhật người dùng: {$updateData['fullname']} (ID: $id)", 'user', $id);
 
         Session::flash('success', 'Cập nhật thành công');
         $this->redirect('adminuser');
@@ -209,6 +231,10 @@ class AdminUserController extends Controller
         $this->userModel->toggleStatus($id);
         $newStatus = $user['status'] == 1 ? 0 : 1;
 
+        // Ghi log thay đổi trạng thái
+        $statusText = $newStatus == 1 ? 'Mở khóa' : 'Khóa';
+        logAction('status_change', "$statusText tài khoản: {$user['fullname']} (ID: $id)", 'user', $id);
+
         $this->json([
             'success' => true,
             'message' => $newStatus == 1 ? 'Đã mở khóa tài khoản' : 'Đã khóa tài khoản',
@@ -232,7 +258,11 @@ class AdminUserController extends Controller
             $this->json(['success' => false, 'message' => 'Không thể xóa tài khoản của chính bạn'], 400);
         }
 
+        $user = $this->userModel->findById($id);
         $this->userModel->delete($id);
+
+        // Ghi log xóa người dùng
+        logAction('delete', "Xóa người dùng: " . ($user['fullname'] ?? "ID $id"), 'user', $id);
 
         $this->json(['success' => true, 'message' => 'Đã xóa người dùng']);
     }

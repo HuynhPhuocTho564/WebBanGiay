@@ -54,11 +54,11 @@
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">Giới tính</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Dành cho</label>
                     <select name="gender" class="w-full px-4 py-2.5 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                        <option value="unisex" <?= $product['gender'] == 'unisex' ? 'selected' : '' ?>>Unisex</option>
-                        <option value="male" <?= $product['gender'] == 'male' ? 'selected' : '' ?>>Nam</option>
-                        <option value="female" <?= $product['gender'] == 'female' ? 'selected' : '' ?>>Nữ</option>
+                        <option value="Unisex" <?= $product['gender'] == 'Unisex' ? 'selected' : '' ?>>Nam & Nữ</option>
+                        <option value="Male" <?= $product['gender'] == 'Male' ? 'selected' : '' ?>>Nam</option>
+                        <option value="Female" <?= $product['gender'] == 'Female' ? 'selected' : '' ?>>Nữ</option>
                     </select>
                 </div>
 

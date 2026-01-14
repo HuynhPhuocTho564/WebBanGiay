@@ -18,26 +18,51 @@ class AdminController extends Controller
      */
     public function index(): void
     {
-        // Thống kê tổng quan
+        // Xử lý bộ lọc thời gian
+        $period = $this->input('period') ?? 'today';
+        $fromDate = $this->input('from_date');
+        $toDate = $this->input('to_date');
+        
+        // Tính toán khoảng thời gian
+        $dateCondition = $this->getDateCondition($period, $fromDate, $toDate);
+        $dateFilter = $dateCondition['filter'];
+        $fromDate = $dateCondition['from'];
+        $toDate = $dateCondition['to'];
+        $periodLabel = $dateCondition['label'];
+
+        // Thống kê tổng quan - KHÔNG theo bộ lọc (luôn hiển thị tổng)
+        $statsTotal = [
+            'totalProducts' => $this->db->count("SELECT COUNT(*) FROM products"),
+            'totalUsers' => $this->db->count("SELECT COUNT(*) FROM tblUser WHERE role = 0"),
+        ];
+
+        // Thống kê theo khoảng thời gian đã chọn
         $stats = [
-            'totalOrders' => $this->db->count("SELECT COUNT(*) FROM orders"),
+            'filteredOrders' => $this->db->count("SELECT COUNT(*) FROM orders WHERE ($dateFilter)"),
+            'filteredRevenue' => $this->db->fetchOne("SELECT COALESCE(SUM(total_money), 0) as total FROM orders WHERE status = 'completed' AND ($dateFilter)")['total'] ?? 0,
+            // Thống kê theo bộ lọc
+            'filteredPending' => $this->db->count("SELECT COUNT(*) FROM orders WHERE status = 'pending' AND ($dateFilter)"),
+            'filteredShipping' => $this->db->count("SELECT COUNT(*) FROM orders WHERE status = 'shipping' AND ($dateFilter)"),
+            // Tổng theo trạng thái (KHÔNG theo bộ lọc - để admin biết cần xử lý bao nhiêu đơn)
             'pendingOrders' => $this->db->count("SELECT COUNT(*) FROM orders WHERE status = 'pending'"),
             'processingOrders' => $this->db->count("SELECT COUNT(*) FROM orders WHERE status = 'processing'"),
             'shippingOrders' => $this->db->count("SELECT COUNT(*) FROM orders WHERE status = 'shipping'"),
             'completedOrders' => $this->db->count("SELECT COUNT(*) FROM orders WHERE status = 'completed'"),
             'cancelledOrders' => $this->db->count("SELECT COUNT(*) FROM orders WHERE status = 'cancelled'"),
-            'totalProducts' => $this->db->count("SELECT COUNT(*) FROM products"),
-            'totalUsers' => $this->db->count("SELECT COUNT(*) FROM tblUser WHERE role = 0"),
-            'totalRevenue' => $this->db->fetchOne("SELECT COALESCE(SUM(total_money), 0) as total FROM orders WHERE status = 'completed'")['total'] ?? 0,
-            'todayOrders' => $this->db->count("SELECT COUNT(*) FROM orders WHERE DATE(order_date) = CURDATE()"),
-            'todayRevenue' => $this->db->fetchOne("SELECT COALESCE(SUM(total_money), 0) as total FROM orders WHERE status = 'completed' AND DATE(order_date) = CURDATE()")['total'] ?? 0,
+            'totalProducts' => $statsTotal['totalProducts'],
+            'totalUsers' => $statsTotal['totalUsers'],
         ];
 
-        // Đơn hàng mới nhất
+        // Tổng doanh thu và đơn hàng (tất cả thời gian) - để so sánh
+        $stats['totalRevenue'] = $this->db->fetchOne("SELECT COALESCE(SUM(total_money), 0) as total FROM orders WHERE status = 'completed'")['total'] ?? 0;
+        $stats['totalOrders'] = $this->db->count("SELECT COUNT(*) FROM orders");
+
+        // Đơn hàng mới nhất (theo bộ lọc)
         $recentOrders = $this->db->fetchAll(
             "SELECT o.*, u.fullname as user_name 
              FROM orders o 
              LEFT JOIN tblUser u ON o.user_id = u.id 
+             WHERE ($dateFilter)
              ORDER BY o.order_date DESC LIMIT 5"
         );
 
@@ -114,11 +139,103 @@ class AdminController extends Controller
             'revenueChartData' => array_values($last7Days),
             'orderStatusChart' => $orderStatusChart,
             'categoryChart' => $categoryChart,
-            'brandChart' => $brandChart
+            'brandChart' => $brandChart,
+            'period' => $period,
+            'fromDate' => $fromDate,
+            'toDate' => $toDate,
+            'periodLabel' => $periodLabel
         ];
 
         $this->view('admin/layouts/header', $data);
         $this->view('admin/dashboard/index', $data);
         $this->view('admin/layouts/footer', $data);
+    }
+
+    /**
+     * Tính toán điều kiện lọc theo thời gian
+     */
+    private function getDateCondition(string $period, ?string $fromDate, ?string $toDate): array
+    {
+        $today = date('Y-m-d');
+        $filter = "DATE(order_date) = '$today'";
+        $label = 'Hôm nay';
+        $from = $today;
+        $to = $today;
+
+        switch ($period) {
+            case 'yesterday':
+                $yesterday = date('Y-m-d', strtotime('-1 day'));
+                $filter = "DATE(order_date) = '$yesterday'";
+                $label = 'Hôm qua';
+                $from = $to = $yesterday;
+                break;
+
+            case '7days':
+                $from = date('Y-m-d', strtotime('-6 days'));
+                $filter = "DATE(order_date) >= '$from'";
+                $label = '7 ngày qua';
+                $to = $today;
+                break;
+
+            case '30days':
+                $from = date('Y-m-d', strtotime('-29 days'));
+                $filter = "DATE(order_date) >= '$from'";
+                $label = '30 ngày qua';
+                $to = $today;
+                break;
+
+            case 'this_month':
+                $from = date('Y-m-01');
+                $filter = "DATE(order_date) >= '$from'";
+                $label = 'Tháng ' . date('m/Y');
+                $to = $today;
+                break;
+
+            case 'last_month':
+                $from = date('Y-m-01', strtotime('first day of last month'));
+                $to = date('Y-m-t', strtotime('last day of last month'));
+                $filter = "DATE(order_date) BETWEEN '$from' AND '$to'";
+                $label = 'Tháng ' . date('m/Y', strtotime('last month'));
+                break;
+
+            case 'this_year':
+                $from = date('Y-01-01');
+                $filter = "DATE(order_date) >= '$from'";
+                $label = 'Năm ' . date('Y');
+                $to = $today;
+                break;
+
+            case 'custom':
+                if ($fromDate && $toDate) {
+                    // Validate: ngày bắt đầu phải <= ngày kết thúc
+                    if (strtotime($fromDate) > strtotime($toDate)) {
+                        // Hoán đổi nếu ngày bắt đầu > ngày kết thúc
+                        $temp = $fromDate;
+                        $fromDate = $toDate;
+                        $toDate = $temp;
+                    }
+                    // Không cho phép ngày kết thúc > hôm nay
+                    if (strtotime($toDate) > strtotime($today)) {
+                        $toDate = $today;
+                    }
+                    $from = $fromDate;
+                    $to = $toDate;
+                    $filter = "DATE(order_date) BETWEEN '$from' AND '$to'";
+                    $label = date('d/m/Y', strtotime($from)) . ' - ' . date('d/m/Y', strtotime($to));
+                }
+                break;
+
+            default: // today
+                $filter = "DATE(order_date) = '$today'";
+                $label = 'Hôm nay';
+                break;
+        }
+
+        return [
+            'filter' => $filter,
+            'from' => $from,
+            'to' => $to,
+            'label' => $label
+        ];
     }
 }

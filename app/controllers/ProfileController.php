@@ -109,14 +109,24 @@ class ProfileController extends Controller
     }
 
     /**
-     * Trang đơn hàng (đang xử lý)
+     * Trang đơn hàng - Gộp tất cả với tabs lọc trạng thái
      */
     public function orders(): void
     {
-        $orders = $this->db->fetchAll(
-            "SELECT * FROM orders WHERE user_id = ? AND status NOT IN ('completed', 'cancelled', 'returned') ORDER BY order_date DESC",
-            [Session::userId()]
-        );
+        $status = $_GET['status'] ?? 'all';
+        
+        // Query theo status
+        if ($status === 'all') {
+            $orders = $this->db->fetchAll(
+                "SELECT * FROM orders WHERE user_id = ? ORDER BY order_date DESC",
+                [Session::userId()]
+            );
+        } else {
+            $orders = $this->db->fetchAll(
+                "SELECT * FROM orders WHERE user_id = ? AND status = ? ORDER BY order_date DESC",
+                [Session::userId(), $status]
+            );
+        }
 
         // Lấy sản phẩm đầu tiên của mỗi đơn hàng để hiển thị preview
         foreach ($orders as &$order) {
@@ -126,7 +136,7 @@ class ProfileController extends Controller
                  JOIN product_variants pv ON od.product_variant_id = pv.id
                  JOIN products p ON pv.product_id = p.id
                  WHERE od.order_id = ?
-                 LIMIT 3",
+                 LIMIT 4",
                 [$order['id']]
             );
             $order['item_count'] = $this->db->count(
@@ -146,39 +156,11 @@ class ProfileController extends Controller
     }
 
     /**
-     * Lịch sử mua hàng (đã hoàn thành/hủy)
+     * Lịch sử mua hàng - Redirect về orders với filter completed
      */
     public function purchaseHistory(): void
     {
-        $orders = $this->db->fetchAll(
-            "SELECT * FROM orders WHERE user_id = ? AND status IN ('completed', 'cancelled', 'returned') ORDER BY order_date DESC",
-            [Session::userId()]
-        );
-
-        foreach ($orders as &$order) {
-            $order['items'] = $this->db->fetchAll(
-                "SELECT od.quantity, p.name, p.thumbnail, pv.size, pv.color
-                 FROM order_details od
-                 JOIN product_variants pv ON od.product_variant_id = pv.id
-                 JOIN products p ON pv.product_id = p.id
-                 WHERE od.order_id = ?
-                 LIMIT 3",
-                [$order['id']]
-            );
-            $order['item_count'] = $this->db->count(
-                "SELECT COUNT(*) FROM order_details WHERE order_id = ?",
-                [$order['id']]
-            );
-        }
-
-        $data = [
-            'pageTitle' => 'Lịch sử mua hàng - ' . SITE_NAME,
-            'orders' => $orders
-        ];
-
-        $this->view('layouts/header', $data);
-        $this->view('client/profile/purchase-history', $data);
-        $this->view('layouts/footer', $data);
+        $this->redirect('profile/orders?status=completed');
     }
 
     /**

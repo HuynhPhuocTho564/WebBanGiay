@@ -10,6 +10,32 @@ class CheckoutController extends Controller
     {
         parent::__construct();
         Middleware::requireLogin();
+        
+        // Không cho Admin/Staff checkout
+        if (Session::canAccessAdmin()) {
+            Session::flash('error', 'Tài khoản quản trị không thể mua hàng. Vui lòng sử dụng tài khoản khách hàng.');
+            $this->redirect('');
+            exit;
+        }
+    }
+
+    /**
+     * Lấy giỏ hàng từ database
+     */
+    private function getCartFromDatabase(): array
+    {
+        $userId = Session::userId();
+        
+        return $this->db->fetchAll(
+            "SELECT c.product_variant_id as id, c.product_variant_id as variant_id, c.quantity,
+                    pv.size, pv.color, pv.stock_quantity,
+                    p.id as product_id, p.name, p.slug, p.thumbnail, p.price, p.discount_price
+             FROM cart c
+             JOIN product_variants pv ON c.product_variant_id = pv.id
+             JOIN products p ON pv.product_id = p.id
+             WHERE c.user_id = ?",
+            [$userId]
+        );
     }
 
     /**
@@ -17,53 +43,48 @@ class CheckoutController extends Controller
      */
     public function index(): void
     {
-        $cart = Session::get('cart', []);
+        // Lấy giỏ hàng từ database
+        $cartData = $this->getCartFromDatabase();
         
-        if (empty($cart)) {
+        if (empty($cartData)) {
             Session::flash('error', 'Giỏ hàng trống');
             $this->redirect('cart');
         }
 
-        // Lấy danh sách sản phẩm đã chọn từ session (nếu có)
+        // Lấy danh sách sản phẩm đã chọn từ session (bắt buộc phải có)
         $selectedItems = Session::get('selected_cart_items', []);
+        
+        // Nếu không có sản phẩm được chọn, quay lại giỏ hàng
+        if (empty($selectedItems)) {
+            Session::flash('error', 'Vui lòng chọn sản phẩm để thanh toán');
+            $this->redirect('cart');
+        }
 
         // Lấy thông tin sản phẩm trong giỏ
         $cartItems = [];
         $totalAmount = 0;
 
-        foreach ($cart as $variantId => $quantity) {
-            // Nếu có danh sách đã chọn, chỉ lấy những sản phẩm đã chọn
-            if (!empty($selectedItems) && !in_array($variantId, $selectedItems)) {
+        foreach ($cartData as $item) {
+            $variantId = $item['id']; // Dùng id thay vì variant_id
+            
+            // Chỉ lấy những sản phẩm đã chọn (so sánh cả string và int)
+            if (!in_array($variantId, $selectedItems) && !in_array((string)$variantId, $selectedItems)) {
                 continue;
             }
 
-            $item = $this->db->fetchOne(
-                "SELECT pv.*, p.name, p.slug, p.thumbnail, p.price, p.discount_price
-                 FROM product_variants pv
-                 JOIN products p ON pv.product_id = p.id
-                 WHERE pv.id = ?",
-                [$variantId]
-            );
-
-            if ($item) {
-                $finalPrice = $item['discount_price'] > 0 ? $item['discount_price'] : $item['price'];
-                $item['quantity'] = $quantity;
-                $item['final_price'] = $finalPrice;
-                $item['subtotal'] = $finalPrice * $quantity;
-                $cartItems[] = $item;
-                $totalAmount += $item['subtotal'];
-            }
+            $finalPrice = ($item['discount_price'] > 0 && $item['discount_price'] < $item['price']) 
+                ? $item['discount_price'] 
+                : $item['price'];
+            $item['final_price'] = $finalPrice;
+            $item['subtotal'] = $finalPrice * $item['quantity'];
+            $cartItems[] = $item;
+            $totalAmount += $item['subtotal'];
         }
 
         if (empty($cartItems)) {
             Session::flash('error', 'Vui lòng chọn sản phẩm để thanh toán');
             $this->redirect('cart');
         }
-
-        // Lấy mã giảm giá đang hoạt động
-        $coupons = $this->db->fetchAll(
-            "SELECT * FROM coupons WHERE status = 1 AND start_date <= NOW() AND end_date >= NOW() AND usage_limit > 0"
-        );
 
         // Lấy thông tin user
         $user = $this->db->fetchOne("SELECT * FROM tblUser WHERE id = ?", [Session::userId()]);
@@ -72,7 +93,6 @@ class CheckoutController extends Controller
             'pageTitle' => 'Thanh toán - ' . SITE_NAME,
             'cartItems' => $cartItems,
             'totalAmount' => $totalAmount,
-            'coupons' => $coupons,
             'user' => $user
         ];
 
@@ -82,46 +102,74 @@ class CheckoutController extends Controller
     }
 
     /**
-     * Áp dụng mã giảm giá (AJAX)
+     * Lấy danh sách coupon khả dụng (AJAX)
      */
-    public function applyCoupon(): void
+    public function getAvailableCoupons(): void
     {
-        $code = strtoupper($this->input('code'));
-        $totalAmount = (float) $this->input('total');
+        $total = (float) ($this->input('total') ?? 0);
+        
+        $coupons = $this->db->fetchAll(
+            "SELECT * FROM coupons 
+             WHERE status = 1 
+               AND (start_date IS NULL OR start_date <= NOW())
+               AND (end_date IS NULL OR end_date >= NOW())
+               AND used_count < usage_limit
+             ORDER BY discount_value DESC"
+        );
+        
+        $this->json(['coupons' => $coupons]);
+    }
 
+    /**
+     * Validate mã giảm giá (AJAX)
+     */
+    public function validateCoupon(): void
+    {
+        $code = strtoupper(trim($this->input('code') ?? ''));
+        $total = (float) ($this->input('total') ?? 0);
+        
+        if (empty($code)) {
+            $this->json(['success' => false, 'message' => 'Vui lòng nhập mã giảm giá']);
+            return;
+        }
+        
         $coupon = $this->db->fetchOne(
-            "SELECT * FROM coupons WHERE code = ? AND status = 1 AND start_date <= NOW() AND end_date >= NOW() AND usage_limit > 0",
+            "SELECT * FROM coupons WHERE code = ? AND status = 1",
             [$code]
         );
-
+        
         if (!$coupon) {
-            $this->json(['success' => false, 'message' => 'Mã giảm giá không hợp lệ hoặc đã hết hạn']);
+            $this->json(['success' => false, 'message' => 'Mã giảm giá không tồn tại']);
+            return;
         }
-
-        if ($totalAmount < $coupon['min_order_value']) {
-            $this->json(['success' => false, 'message' => 'Đơn hàng tối thiểu ' . number_format($coupon['min_order_value'], 0, ',', '.') . 'đ']);
+        
+        // Check thời hạn
+        if ($coupon['start_date'] && strtotime($coupon['start_date']) > time()) {
+            $this->json(['success' => false, 'message' => 'Mã giảm giá chưa có hiệu lực']);
+            return;
         }
-
-        // Tính giảm giá
-        if ($coupon['discount_type'] === 'percent') {
-            $discount = $totalAmount * ($coupon['discount_value'] / 100);
-        } else {
-            $discount = $coupon['discount_value'];
+        
+        if ($coupon['end_date'] && strtotime($coupon['end_date']) < time()) {
+            $this->json(['success' => false, 'message' => 'Mã giảm giá đã hết hạn']);
+            return;
         }
-
-        $finalTotal = $totalAmount - $discount;
-        if ($finalTotal < 0) $finalTotal = 0;
-
-        Session::set('applied_coupon', $coupon);
-
-        $this->json([
-            'success' => true,
-            'discount' => $discount,
-            'discountFormatted' => number_format($discount, 0, ',', '.') . 'đ',
-            'finalTotal' => $finalTotal,
-            'finalTotalFormatted' => number_format($finalTotal, 0, ',', '.') . 'đ',
-            'message' => 'Áp dụng mã giảm giá thành công'
-        ]);
+        
+        // Check lượt dùng
+        if ($coupon['used_count'] >= $coupon['usage_limit']) {
+            $this->json(['success' => false, 'message' => 'Mã giảm giá đã hết lượt sử dụng']);
+            return;
+        }
+        
+        // Check đơn tối thiểu
+        if ($total < $coupon['min_order_value']) {
+            $this->json([
+                'success' => false, 
+                'message' => 'Đơn hàng tối thiểu ' . number_format($coupon['min_order_value'], 0, ',', '.') . 'đ'
+            ]);
+            return;
+        }
+        
+        $this->json(['success' => true, 'coupon' => $coupon]);
     }
 
     /**
@@ -129,19 +177,25 @@ class CheckoutController extends Controller
      */
     public function setSelectedItems(): void
     {
-        $items = $this->input('items');
+        // Lấy raw data vì input() dùng htmlspecialchars làm hỏng JSON
+        $items = $_POST['items'] ?? null;
+        
         if ($items) {
             $selectedItems = json_decode($items, true);
-            Session::set('selected_cart_items', $selectedItems);
-            $this->json(['success' => true]);
-        } else {
-            $this->json(['success' => false]);
+            if (is_array($selectedItems) && !empty($selectedItems)) {
+                // Đảm bảo là mảng string để so sánh đúng
+                $selectedItems = array_map('strval', $selectedItems);
+                Session::set('selected_cart_items', $selectedItems);
+                $this->json(['success' => true, 'items' => $selectedItems]);
+                return;
+            }
         }
+        
+        $this->json(['success' => false, 'message' => 'No items selected']);
     }
 
     /**
      * Đặt hàng
-     * FIX BUG #1, #2, #3: Sử dụng transaction và atomic operations
      */
     public function placeOrder(): void
     {
@@ -149,13 +203,19 @@ class CheckoutController extends Controller
             $this->redirect('checkout');
         }
 
-        $cart = Session::get('cart', []);
-        if (empty($cart)) {
+        // Lấy giỏ hàng từ database
+        $cartData = $this->getCartFromDatabase();
+        if (empty($cartData)) {
             $this->redirect('cart');
         }
 
         // Lấy danh sách sản phẩm đã chọn
         $selectedItems = Session::get('selected_cart_items', []);
+        
+        if (empty($selectedItems)) {
+            Session::flash('error', 'Vui lòng chọn sản phẩm để thanh toán');
+            $this->redirect('cart');
+        }
 
         // Validate thông tin
         $fullname = $this->input('fullname');
@@ -164,41 +224,46 @@ class CheckoutController extends Controller
         $address = $this->input('address');
         $note = $this->input('note');
         $paymentMethod = $this->input('payment_method') ?: 'COD';
+        $couponId = $this->input('coupon_id') ? (int) $this->input('coupon_id') : null;
 
         if (empty($fullname) || empty($phone) || empty($address)) {
             Session::flash('error', 'Vui lòng điền đầy đủ thông tin');
             $this->redirect('checkout');
         }
 
-        // BUG #14 FIX: Validate số điện thoại
+        // Validate số điện thoại
         if (!preg_match('/^[0-9]{10,11}$/', $phone)) {
             Session::flash('error', 'Số điện thoại không hợp lệ (10-11 số)');
             $this->redirect('checkout');
         }
 
-        // BUG #13 FIX: Validate email nếu có
+        // Validate email nếu có
         if (!empty($email) && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
             Session::flash('error', 'Email không hợp lệ');
             $this->redirect('checkout');
         }
 
-        // Bắt đầu transaction để đảm bảo atomic
+        // Bắt đầu transaction
         $this->db->beginTransaction();
 
         try {
-            // Tính tổng tiền và kiểm tra tồn kho với lock
+            // Tính tổng tiền và kiểm tra tồn kho
             $totalAmount = 0;
             $orderItems = [];
             $processedVariantIds = [];
+            $userId = Session::userId();
 
-            foreach ($cart as $variantId => $quantity) {
-                // Chỉ xử lý sản phẩm đã chọn
-                if (!empty($selectedItems) && !in_array($variantId, $selectedItems)) {
+            foreach ($cartData as $item) {
+                $variantId = $item['id']; // Dùng id
+                $quantity = $item['quantity'];
+                
+                // So sánh linh hoạt
+                if (!in_array($variantId, $selectedItems) && !in_array((string)$variantId, $selectedItems)) {
                     continue;
                 }
 
-                // BUG #1 FIX: Sử dụng FOR UPDATE để lock row
-                $item = $this->db->fetchOne(
+                // Lock row để kiểm tra tồn kho
+                $variant = $this->db->fetchOne(
                     "SELECT pv.*, p.price, p.discount_price, p.name
                      FROM product_variants pv
                      JOIN products p ON pv.product_id = p.id
@@ -207,17 +272,17 @@ class CheckoutController extends Controller
                     [$variantId]
                 );
 
-                // BUG #5 FIX: Kiểm tra sản phẩm còn tồn tại
-                if (!$item) {
+                if (!$variant) {
                     throw new Exception("Sản phẩm không còn tồn tại. Vui lòng kiểm tra lại giỏ hàng.");
                 }
 
-                // Kiểm tra tồn kho
-                if ($item['stock_quantity'] < $quantity) {
-                    throw new Exception("Sản phẩm '{$item['name']}' (Size: {$item['size']}, Màu: {$item['color']}) chỉ còn {$item['stock_quantity']} sản phẩm.");
+                if ($variant['stock_quantity'] < $quantity) {
+                    throw new Exception("Sản phẩm '{$variant['name']}' (Size: {$variant['size']}, Màu: {$variant['color']}) chỉ còn {$variant['stock_quantity']} sản phẩm.");
                 }
 
-                $finalPrice = $item['discount_price'] > 0 ? $item['discount_price'] : $item['price'];
+                $finalPrice = ($variant['discount_price'] > 0 && $variant['discount_price'] < $variant['price']) 
+                    ? $variant['discount_price'] 
+                    : $variant['price'];
                 $subtotal = $finalPrice * $quantity;
                 $totalAmount += $subtotal;
 
@@ -234,61 +299,57 @@ class CheckoutController extends Controller
                 throw new Exception("Không có sản phẩm hợp lệ để đặt hàng.");
             }
 
-            // BUG #2, #3 FIX: Validate lại coupon trước khi áp dụng
-            $couponId = null;
-            $discount = 0;
-            $appliedCoupon = Session::get('applied_coupon');
-            
-            if ($appliedCoupon) {
-                // Kiểm tra lại coupon với lock
+            // Xử lý coupon
+            $discountAmount = 0;
+            if ($couponId) {
                 $coupon = $this->db->fetchOne(
-                    "SELECT * FROM coupons WHERE id = ? AND status = 1 AND start_date <= NOW() AND end_date >= NOW() FOR UPDATE",
-                    [$appliedCoupon['id']]
-                );
-
-                if (!$coupon) {
-                    throw new Exception("Mã giảm giá đã hết hạn hoặc không còn hiệu lực.");
-                }
-
-                if ($coupon['usage_limit'] <= 0) {
-                    throw new Exception("Mã giảm giá đã hết lượt sử dụng.");
-                }
-
-                if ($totalAmount < $coupon['min_order_value']) {
-                    throw new Exception("Đơn hàng chưa đạt giá trị tối thiểu " . number_format($coupon['min_order_value'], 0, ',', '.') . "đ để sử dụng mã giảm giá.");
-                }
-
-                // Tính giảm giá
-                if ($coupon['discount_type'] === 'percent') {
-                    $discount = $totalAmount * ($coupon['discount_value'] / 100);
-                } else {
-                    $discount = $coupon['discount_value'];
-                }
-                
-                $totalAmount -= $discount;
-                if ($totalAmount < 0) $totalAmount = 0;
-                $couponId = $coupon['id'];
-
-                // Giảm usage_limit với điều kiện > 0
-                $affected = $this->db->rowCount(
-                    "UPDATE coupons SET usage_limit = usage_limit - 1 WHERE id = ? AND usage_limit > 0",
+                    "SELECT * FROM coupons WHERE id = ? AND status = 1 FOR UPDATE",
                     [$couponId]
                 );
-
-                if ($affected === 0) {
-                    throw new Exception("Mã giảm giá đã hết lượt sử dụng.");
+                
+                if ($coupon) {
+                    // Validate lại coupon
+                    $isValid = true;
+                    if ($coupon['start_date'] && strtotime($coupon['start_date']) > time()) $isValid = false;
+                    if ($coupon['end_date'] && strtotime($coupon['end_date']) < time()) $isValid = false;
+                    if ($coupon['used_count'] >= $coupon['usage_limit']) $isValid = false;
+                    if ($totalAmount < $coupon['min_order_value']) $isValid = false;
+                    
+                    if ($isValid) {
+                        // Tính giảm giá
+                        if ($coupon['discount_type'] === 'percent') {
+                            $discountAmount = $totalAmount * $coupon['discount_value'] / 100;
+                            if ($coupon['max_discount'] && $discountAmount > $coupon['max_discount']) {
+                                $discountAmount = $coupon['max_discount'];
+                            }
+                        } else {
+                            $discountAmount = $coupon['discount_value'];
+                        }
+                        
+                        // Tăng used_count
+                        $this->db->query(
+                            "UPDATE coupons SET used_count = used_count + 1 WHERE id = ?",
+                            [$couponId]
+                        );
+                    } else {
+                        $couponId = null; // Không áp dụng coupon không hợp lệ
+                    }
+                } else {
+                    $couponId = null;
                 }
             }
 
+            $finalTotal = $totalAmount - $discountAmount;
+
             // Tạo đơn hàng
             $orderId = $this->db->insert('orders', [
-                'user_id' => Session::userId(),
+                'user_id' => $userId,
                 'fullname' => $fullname,
                 'email' => $email,
                 'phone_number' => $phone,
                 'address' => $address,
                 'note' => $note,
-                'total_money' => $totalAmount,
+                'total_money' => $finalTotal,
                 'payment_method' => $paymentMethod,
                 'coupon_id' => $couponId,
                 'status' => 'pending'
@@ -304,7 +365,6 @@ class CheckoutController extends Controller
                     'total_item_price' => $item['subtotal']
                 ]);
 
-                // BUG #1 FIX: Trừ tồn kho với điều kiện đủ hàng
                 $affected = $this->db->rowCount(
                     "UPDATE product_variants SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?",
                     [$item['quantity'], $item['variant_id'], $item['quantity']]
@@ -315,28 +375,23 @@ class CheckoutController extends Controller
                 }
             }
 
+            // Xóa sản phẩm đã thanh toán khỏi giỏ hàng trong database
+            foreach ($processedVariantIds as $variantId) {
+                $this->db->query(
+                    "DELETE FROM cart WHERE user_id = ? AND product_variant_id = ?",
+                    [$userId, $variantId]
+                );
+            }
+
             // Commit transaction
             $this->db->commit();
-
-            // Xóa sản phẩm đã thanh toán khỏi giỏ hàng
-            foreach ($processedVariantIds as $variantId) {
-                unset($cart[$variantId]);
-            }
             
-            if (empty($cart)) {
-                Session::remove('cart');
-            } else {
-                Session::set('cart', $cart);
-            }
-            
-            Session::remove('applied_coupon');
             Session::remove('selected_cart_items');
 
             Session::flash('success', 'Đặt hàng thành công! Mã đơn hàng: #' . $orderId);
             $this->redirect('checkout/success/' . $orderId);
 
         } catch (Exception $e) {
-            // Rollback nếu có lỗi
             $this->db->rollback();
             Session::flash('error', $e->getMessage());
             $this->redirect('checkout');
@@ -349,7 +404,10 @@ class CheckoutController extends Controller
     public function success(int $orderId = 0): void
     {
         $order = $this->db->fetchOne(
-            "SELECT * FROM orders WHERE id = ? AND user_id = ?",
+            "SELECT o.*, c.code as coupon_code, c.name as coupon_name 
+             FROM orders o 
+             LEFT JOIN coupons c ON o.coupon_id = c.id
+             WHERE o.id = ? AND o.user_id = ?",
             [$orderId, Session::userId()]
         );
 

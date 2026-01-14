@@ -16,14 +16,13 @@ USE shop_giay_db;
 CREATE TABLE IF NOT EXISTS tblUser (
     id INT AUTO_INCREMENT PRIMARY KEY,
     username VARCHAR(50) DEFAULT NULL,
-    password VARCHAR(255) DEFAULT NULL,
-    email VARCHAR(100) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    email VARCHAR(100) DEFAULT NULL,
     fullname VARCHAR(100) NOT NULL,
     google_id VARCHAR(255) DEFAULT NULL,
-    facebook_id VARCHAR(255) DEFAULT NULL,
+    phone_number VARCHAR(20) NOT NULL UNIQUE,
     avatar VARCHAR(255) DEFAULT NULL,
     dob DATE DEFAULT NULL,
-    phone_number VARCHAR(20) DEFAULT NULL,
     address TEXT DEFAULT NULL,
     role TINYINT DEFAULT 0 COMMENT '0: Khách hàng, 1: Nhân viên, 2: Admin',
     status TINYINT DEFAULT 1 COMMENT '1: Hoạt động, 0: Bị khóa',
@@ -88,14 +87,18 @@ CREATE TABLE IF NOT EXISTS galleries (
 CREATE TABLE IF NOT EXISTS coupons (
     id INT AUTO_INCREMENT PRIMARY KEY,
     code VARCHAR(50) NOT NULL UNIQUE,
+    name VARCHAR(100) DEFAULT NULL,
+    description TEXT DEFAULT NULL,
     discount_type ENUM('percent', 'fixed') DEFAULT 'percent',
     discount_value DECIMAL(12, 2) NOT NULL,
+    max_discount DECIMAL(12, 2) DEFAULT NULL COMMENT 'Giảm tối đa cho loại percent',
     min_order_value DECIMAL(12, 2) DEFAULT 0,
     start_date DATETIME,
     end_date DATETIME,
     usage_limit INT DEFAULT 100,
     used_count INT DEFAULT 0,
-    status TINYINT DEFAULT 1
+    status TINYINT DEFAULT 1,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 8. Bảng đơn hàng
@@ -352,12 +355,12 @@ INSERT INTO product_variants (product_id, size, color, stock_quantity) VALUES
 
 
 -- 7. Thêm mã giảm giá
-INSERT INTO coupons (code, discount_type, discount_value, min_order_value, start_date, end_date, usage_limit, used_count, status) VALUES
-('WELCOME10', 'percent', 10, 500000, '2024-01-01 00:00:00', '2025-12-31 23:59:59', 1000, 0, 1),
-('SALE20', 'percent', 20, 1000000, '2024-01-01 00:00:00', '2025-12-31 23:59:59', 500, 0, 1),
-('FREESHIP', 'fixed', 30000, 300000, '2024-01-01 00:00:00', '2025-12-31 23:59:59', 2000, 0, 1),
-('NEWYEAR50', 'fixed', 50000, 500000, '2024-12-01 00:00:00', '2025-01-31 23:59:59', 200, 0, 1),
-('VIP30', 'percent', 30, 2000000, '2024-01-01 00:00:00', '2025-12-31 23:59:59', 100, 0, 1);
+INSERT INTO coupons (code, name, description, discount_type, discount_value, max_discount, min_order_value, start_date, end_date, usage_limit, used_count, status) VALUES
+('WELCOME10', 'Giảm 10% cho khách mới', 'Áp dụng cho đơn hàng đầu tiên', 'percent', 10, 100000, 500000, '2024-01-01 00:00:00', '2026-12-31 23:59:59', 1000, 0, 1),
+('SALE20', 'Giảm 20% đơn từ 1 triệu', 'Ưu đãi đặc biệt cuối tuần', 'percent', 20, 200000, 1000000, '2024-01-01 00:00:00', '2026-12-31 23:59:59', 500, 0, 1),
+('FREESHIP', 'Miễn phí vận chuyển', 'Giảm 30K phí ship cho đơn từ 300K', 'fixed', 30000, NULL, 300000, '2024-01-01 00:00:00', '2026-12-31 23:59:59', 2000, 0, 1),
+('GIAM50K', 'Giảm ngay 50K', 'Áp dụng cho đơn từ 500K', 'fixed', 50000, NULL, 500000, '2024-01-01 00:00:00', '2026-12-31 23:59:59', 500, 0, 1),
+('VIP30', 'VIP giảm 30%', 'Dành cho khách VIP, đơn từ 2 triệu', 'percent', 30, 500000, 2000000, '2024-01-01 00:00:00', '2026-12-31 23:59:59', 100, 0, 1);
 
 -- ==========================================================
 -- PHẦN 3: HOÀN TẤT

@@ -2,21 +2,117 @@
 <div class="bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl p-6 mb-6 text-white">
     <div>
         <h1 class="text-2xl font-bold mb-2">Xin chào, <?= Session::user()['fullname'] ?>! 👋</h1>
-        <p class="text-blue-100">Đây là tổng quan cửa hàng của bạn hôm nay</p>
+        <p class="text-blue-100">Đây là tổng quan cửa hàng của bạn</p>
     </div>
 </div>
+
+<!-- Bộ lọc thời gian -->
+<div class="bg-white rounded-xl shadow-sm p-4 mb-6">
+    <form method="GET" action="<?= BASE_URL ?>/admin" id="filterForm" class="flex flex-wrap items-center gap-3" onsubmit="return validateDateRange()">
+        <label for="periodSelect" class="text-sm font-medium text-gray-600">
+            <i class="fas fa-calendar-alt mr-2"></i>Thời gian:
+        </label>
+        <span class="text-xs text-blue-500 ml-2 font-medium"><?= $periodLabel ?? 'Hôm nay' ?></span>
+        <select name="period" id="periodSelect" onchange="toggleCustomDate(this.value)" 
+                title="Chọn khoảng thời gian"
+                class="px-4 py-2 border rounded-lg focus:outline-none focus:border-blue-500 text-sm">
+            <option value="today" <?= ($period ?? 'today') === 'today' ? 'selected' : '' ?>>Hôm nay</option>
+            <option value="yesterday" <?= ($period ?? '') === 'yesterday' ? 'selected' : '' ?>>Hôm qua</option>
+            <option value="7days" <?= ($period ?? '') === '7days' ? 'selected' : '' ?>>7 ngày qua</option>
+            <option value="30days" <?= ($period ?? '') === '30days' ? 'selected' : '' ?>>30 ngày qua</option>
+            <option value="this_month" <?= ($period ?? '') === 'this_month' ? 'selected' : '' ?>>Tháng này</option>
+            <option value="last_month" <?= ($period ?? '') === 'last_month' ? 'selected' : '' ?>>Tháng trước</option>
+            <option value="this_year" <?= ($period ?? '') === 'this_year' ? 'selected' : '' ?>>Năm nay</option>
+            <option value="custom" <?= ($period ?? '') === 'custom' ? 'selected' : '' ?>>Tùy chọn</option>
+        </select>
+        <div id="customDateRange" class="flex items-center gap-2 <?= ($period ?? '') !== 'custom' ? 'hidden' : '' ?>">
+            <label for="fromDate" class="text-sm text-gray-500">Từ:</label>
+            <input type="date" name="from_date" id="fromDate" value="<?= $fromDate ?? '' ?>" 
+                   title="Ngày bắt đầu" max="<?= date('Y-m-d') ?>"
+                   onchange="updateToDateMin()"
+                   class="px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 text-sm">
+            <label for="toDate" class="text-sm text-gray-500">Đến:</label>
+            <input type="date" name="to_date" id="toDate" value="<?= $toDate ?? '' ?>" 
+                   title="Ngày kết thúc" max="<?= date('Y-m-d') ?>"
+                   class="px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 text-sm">
+        </div>
+        <button type="submit" title="Áp dụng bộ lọc" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition text-sm">
+            <i class="fas fa-filter mr-1"></i> Lọc
+        </button>
+        <?php if (($period ?? 'today') !== 'today'): ?>
+        <a href="<?= BASE_URL ?>/admin" title="Xóa bộ lọc" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-sm">
+            <i class="fas fa-times mr-1"></i> Xóa lọc
+        </a>
+        <?php endif; ?>
+    </form>
+</div>
+
+<script>
+function toggleCustomDate(value) {
+    const customDiv = document.getElementById('customDateRange');
+    if (value === 'custom') {
+        customDiv.classList.remove('hidden');
+        // Set default dates if empty
+        const fromDate = document.getElementById('fromDate');
+        const toDate = document.getElementById('toDate');
+        if (!fromDate.value) {
+            // Default: 7 ngày trước
+            const d = new Date();
+            d.setDate(d.getDate() - 7);
+            fromDate.value = d.toISOString().split('T')[0];
+        }
+        if (!toDate.value) {
+            toDate.value = new Date().toISOString().split('T')[0];
+        }
+        updateToDateMin();
+    } else {
+        customDiv.classList.add('hidden');
+    }
+}
+
+function updateToDateMin() {
+    const fromDate = document.getElementById('fromDate');
+    const toDate = document.getElementById('toDate');
+    if (fromDate.value) {
+        toDate.min = fromDate.value;
+        // Nếu toDate < fromDate thì set toDate = fromDate
+        if (toDate.value && toDate.value < fromDate.value) {
+            toDate.value = fromDate.value;
+        }
+    }
+}
+
+function validateDateRange() {
+    const period = document.getElementById('periodSelect').value;
+    if (period === 'custom') {
+        const fromDate = document.getElementById('fromDate').value;
+        const toDate = document.getElementById('toDate').value;
+        
+        if (!fromDate || !toDate) {
+            alert('Vui lòng chọn ngày bắt đầu và ngày kết thúc');
+            return false;
+        }
+        
+        if (fromDate > toDate) {
+            alert('Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc');
+            return false;
+        }
+    }
+    return true;
+}
+</script>
 
 <!-- Stats Cards Row 1 -->
 <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <?php if (Session::isAdmin()): ?>
-    <!-- Doanh thu hôm nay - Chỉ Admin -->
+    <!-- Doanh thu theo khoảng thời gian - Chỉ Admin -->
     <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-green-500">
         <div class="flex items-start justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">Doanh thu hôm nay</p>
-                <p class="text-xl font-bold text-gray-800"><?= formatMoney($stats['todayRevenue'] ?? 0) ?></p>
+                <p class="text-sm text-gray-500 mb-1">Doanh thu <?= strtolower($periodLabel ?? 'hôm nay') ?></p>
+                <p class="text-xl font-bold text-gray-800"><?= formatMoney($stats['filteredRevenue'] ?? 0) ?></p>
                 <p class="text-xs text-green-600 mt-2">
-                    <i class="fas fa-arrow-up"></i> So với hôm qua
+                    <i class="fas fa-calendar-alt"></i> <?= $periodLabel ?? 'Hôm nay' ?>
                 </p>
             </div>
             <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
@@ -26,14 +122,14 @@
     </div>
     <?php endif; ?>
 
-    <!-- Đơn hàng hôm nay -->
+    <!-- Đơn hàng theo khoảng thời gian -->
     <div class="bg-white rounded-xl p-5 shadow-sm border-l-4 border-blue-500">
         <div class="flex items-start justify-between">
             <div>
-                <p class="text-sm text-gray-500 mb-1">Đơn hàng hôm nay</p>
-                <p class="text-xl font-bold text-gray-800"><?= number_format($stats['todayOrders'] ?? 0) ?></p>
+                <p class="text-sm text-gray-500 mb-1">Đơn hàng <?= strtolower($periodLabel ?? 'hôm nay') ?></p>
+                <p class="text-xl font-bold text-gray-800"><?= number_format($stats['filteredOrders'] ?? 0) ?></p>
                 <p class="text-xs text-blue-600 mt-2">
-                    <i class="fas fa-shopping-bag"></i> Đơn mới
+                    <i class="fas fa-shopping-bag"></i> <?= $periodLabel ?? 'Hôm nay' ?>
                 </p>
             </div>
             <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -63,7 +159,7 @@
         <div class="flex items-start justify-between">
             <div>
                 <p class="text-sm text-gray-500 mb-1">Đang giao hàng</p>
-                <p class="text-xl font-bold text-gray-800"><?= number_format($stats['shippingOrders'] ?? 0) ?></p>
+                <p class="text-xl font-bold text-gray-800"><?= number_format($stats['shippingOrders']) ?></p>
                 <p class="text-xs text-purple-600 mt-2">
                     <i class="fas fa-truck"></i> Đơn đang ship
                 </p>
@@ -144,7 +240,7 @@
 
 <!-- Order Status Overview -->
 <div class="bg-white rounded-xl shadow-sm p-5 mb-6">
-    <h2 class="font-bold mb-4">Tình trạng đơn hàng</h2>
+    <h2 class="font-bold mb-4">Tình trạng đơn hàng <span class="text-sm font-normal text-gray-400">(Tổng tất cả)</span></h2>
     <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
         <a href="<?= BASE_URL ?>/adminorder?status=pending" class="text-center p-4 rounded-xl bg-yellow-50 hover:bg-yellow-100 transition">
             <div class="w-12 h-12 bg-yellow-200 rounded-full flex items-center justify-center mx-auto mb-2">
@@ -312,45 +408,6 @@
             </div>
             <?php endif; ?>
         </div>
-    </div>
-</div>
-
-<!-- Quick Actions -->
-<div class="bg-white rounded-xl shadow-sm p-5">
-    <h2 class="font-bold mb-4">⚡ Thao tác nhanh</h2>
-    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <a href="<?= BASE_URL ?>/adminproduct/create" class="flex flex-col items-center gap-2 p-4 border-2 border-dashed rounded-xl hover:border-blue-500 hover:bg-blue-50 transition group">
-            <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition">
-                <i class="fas fa-plus text-blue-600 text-xl"></i>
-            </div>
-            <span class="text-sm font-medium text-center">Thêm sản phẩm</span>
-        </a>
-        <a href="<?= BASE_URL ?>/adminorder?status=pending" class="flex flex-col items-center gap-2 p-4 border-2 border-dashed rounded-xl hover:border-orange-500 hover:bg-orange-50 transition group">
-            <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center group-hover:bg-orange-200 transition">
-                <i class="fas fa-clock text-orange-600 text-xl"></i>
-            </div>
-            <span class="text-sm font-medium text-center">Đơn chờ xử lý</span>
-        </a>
-        <a href="<?= BASE_URL ?>/admincategory" class="flex flex-col items-center gap-2 p-4 border-2 border-dashed rounded-xl hover:border-purple-500 hover:bg-purple-50 transition group">
-            <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center group-hover:bg-purple-200 transition">
-                <i class="fas fa-tags text-purple-600 text-xl"></i>
-            </div>
-            <span class="text-sm font-medium text-center">Danh mục</span>
-        </a>
-        <a href="<?= BASE_URL ?>/adminbrand" class="flex flex-col items-center gap-2 p-4 border-2 border-dashed rounded-xl hover:border-indigo-500 hover:bg-indigo-50 transition group">
-            <div class="w-12 h-12 bg-indigo-100 rounded-full flex items-center justify-center group-hover:bg-indigo-200 transition">
-                <i class="fas fa-copyright text-indigo-600 text-xl"></i>
-            </div>
-            <span class="text-sm font-medium text-center">Thương hiệu</span>
-        </a>
-        <?php if (Session::isAdmin()): ?>
-        <a href="<?= BASE_URL ?>/adminreport" class="flex flex-col items-center gap-2 p-4 border-2 border-dashed rounded-xl hover:border-green-500 hover:bg-green-50 transition group">
-            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center group-hover:bg-green-200 transition">
-                <i class="fas fa-chart-bar text-green-600 text-xl"></i>
-            </div>
-            <span class="text-sm font-medium text-center">Báo cáo</span>
-        </a>
-        <?php endif; ?>
     </div>
 </div>
 

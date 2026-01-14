@@ -163,6 +163,16 @@ class AdminOrderController extends Controller
             // Cập nhật trạng thái
             $this->db->query("UPDATE orders SET status = ? WHERE id = ?", [$newStatus, $id]);
 
+            // Ghi log thay đổi trạng thái đơn hàng
+            logAction(
+                'status_change', 
+                "Cập nhật trạng thái đơn hàng #$id: $currentStatus → $newStatus", 
+                'order', 
+                $id,
+                ['status' => $currentStatus],
+                ['status' => $newStatus]
+            );
+
             $this->db->commit();
             Session::flash('success', 'Cập nhật trạng thái thành công');
 

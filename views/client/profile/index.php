@@ -21,7 +21,7 @@
                                 <i class="fas fa-camera text-xs"></i>
                             </label>
                             <input type="file" id="avatarInput" name="avatar" accept="image/*" class="hidden" 
-                                   onchange="document.getElementById('avatarPreview').src = URL.createObjectURL(this.files[0])">
+                                   onchange="if(this.files && this.files[0]) document.getElementById('avatarPreview').src = URL.createObjectURL(this.files[0])">
                         </div>
                         <div>
                             <p class="font-medium"><?= htmlspecialchars($user['fullname']) ?></p>

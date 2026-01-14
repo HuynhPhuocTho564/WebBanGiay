@@ -1,11 +1,16 @@
+<?php $canEdit = Session::isAdmin(); ?>
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 class="text-2xl font-bold">Quản lý thương hiệu</h2>
+        <?php if ($canEdit): ?>
         <button onclick="document.getElementById('addModal').classList.remove('hidden')" 
                 class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-blue-600">
             <i class="fas fa-plus mr-2"></i>Thêm thương hiệu
         </button>
+        <?php else: ?>
+        <span class="text-sm text-gray-500 italic">Chỉ Admin mới có quyền thêm/sửa/xóa</span>
+        <?php endif; ?>
     </div>
 
     <!-- Brands Table -->
@@ -39,11 +44,15 @@
                         </span>
                     </td>
                     <td class="px-4 py-3 text-center">
+                        <?php if ($canEdit): ?>
                         <button onclick="editBrand(<?= htmlspecialchars(json_encode($brand)) ?>)" class="text-accent hover:underline mr-2">Sửa</button>
                         <?php if ($brand['product_count'] == 0): ?>
                         <a href="<?= BASE_URL ?>/adminbrand/delete/<?= $brand['id'] ?>" onclick="return confirm('Xác nhận xóa?')" class="text-red-500 hover:underline">Xóa</a>
                         <?php else: ?>
                         <button onclick="alert('Không thể xóa! Đang có <?= $brand['product_count'] ?> sản phẩm.')" class="text-gray-400">Xóa</button>
+                        <?php endif; ?>
+                        <?php else: ?>
+                        <span class="text-gray-400">—</span>
                         <?php endif; ?>
                     </td>
                 </tr>

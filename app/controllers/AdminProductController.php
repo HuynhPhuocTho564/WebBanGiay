@@ -149,6 +149,9 @@ class AdminProductController extends Controller
 
         $productId = $this->db->insert('products', $data);
 
+        // Ghi log tạo sản phẩm
+        logAction('create', "Tạo sản phẩm mới: $name", 'product', $productId, null, $data);
+
         // Thêm variants
         $sizes = $_POST['sizes'] ?? [];
         $colors = $_POST['colors'] ?? [];
@@ -266,6 +269,9 @@ class AdminProductController extends Controller
 
         $this->db->update('products', $data, 'id = ?', [$id]);
 
+        // Ghi log cập nhật sản phẩm
+        logAction('update', "Cập nhật sản phẩm: $name", 'product', $id);
+
         Session::flash('success', 'Cập nhật sản phẩm thành công');
         $this->redirect('adminproduct/edit/' . $id);
     }
@@ -294,9 +300,14 @@ class AdminProductController extends Controller
         }
 
         // Xóa variants trước, sau đó xóa product
+        $product = $this->db->fetchOne("SELECT name FROM products WHERE id = ?", [$id]);
+        
         $this->db->query("DELETE FROM product_variants WHERE product_id = ?", [$id]);
         $this->db->query("DELETE FROM wishlists WHERE product_id = ?", [$id]);
         $this->db->query("DELETE FROM products WHERE id = ?", [$id]);
+        
+        // Ghi log xóa sản phẩm
+        logAction('delete', "Xóa sản phẩm: " . ($product['name'] ?? "ID $id"), 'product', $id);
         
         Session::flash('success', 'Xóa sản phẩm thành công');
         $this->redirect('adminproduct');

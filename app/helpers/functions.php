@@ -181,3 +181,87 @@ function dd($data): void
     echo '</pre>';
     die();
 }
+
+/**
+ * Ghi log hoạt động vào bảng audit_logs
+ * 
+ * @param string $action Loại hành động: login, logout, create, update, delete, view, etc.
+ * @param string $description Mô tả chi tiết hành động
+ * @param string|null $entityType Loại đối tượng: product, order, user, category, brand, coupon
+ * @param int|null $entityId ID của đối tượng
+ * @param array|null $oldData Dữ liệu cũ (trước khi thay đổi)
+ * @param array|null $newData Dữ liệu mới (sau khi thay đổi)
+ */
+function logAction(
+    string $action, 
+    string $description, 
+    ?string $entityType = null, 
+    ?int $entityId = null,
+    ?array $oldData = null,
+    ?array $newData = null
+): void {
+    try {
+        $db = Database::getInstance();
+        
+        // Lấy thông tin user hiện tại
+        $userId = Session::isLoggedIn() ? Session::user()['id'] : null;
+        $username = Session::isLoggedIn() ? (Session::user()['fullname'] ?? Session::user()['username'] ?? 'Unknown') : 'Guest';
+        
+        // Lấy IP và User Agent
+        $ipAddress = $_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR'] ?? null;
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? null;
+        
+        $db->insert('audit_logs', [
+            'user_id' => $userId,
+            'username' => $username,
+            'action' => $action,
+            'entity_type' => $entityType,
+            'entity_id' => $entityId,
+            'description' => $description,
+            'old_data' => $oldData ? json_encode($oldData, JSON_UNESCAPED_UNICODE) : null,
+            'new_data' => $newData ? json_encode($newData, JSON_UNESCAPED_UNICODE) : null,
+            'ip_address' => $ipAddress,
+            'user_agent' => $userAgent
+        ]);
+    } catch (Exception $e) {
+        // Không throw exception để không ảnh hưởng đến luồng chính
+        error_log('Audit Log Error: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Lấy tên hành động tiếng Việt
+ */
+function actionLabel(string $action): array
+{
+    $actions = [
+        'login' => ['label' => 'Đăng nhập', 'color' => 'green', 'icon' => 'sign-in-alt'],
+        'logout' => ['label' => 'Đăng xuất', 'color' => 'gray', 'icon' => 'sign-out-alt'],
+        'login_failed' => ['label' => 'Đăng nhập thất bại', 'color' => 'red', 'icon' => 'times-circle'],
+        'create' => ['label' => 'Tạo mới', 'color' => 'blue', 'icon' => 'plus-circle'],
+        'update' => ['label' => 'Cập nhật', 'color' => 'yellow', 'icon' => 'edit'],
+        'delete' => ['label' => 'Xóa', 'color' => 'red', 'icon' => 'trash'],
+        'status_change' => ['label' => 'Đổi trạng thái', 'color' => 'purple', 'icon' => 'exchange-alt'],
+        'view' => ['label' => 'Xem', 'color' => 'gray', 'icon' => 'eye'],
+        'export' => ['label' => 'Xuất dữ liệu', 'color' => 'indigo', 'icon' => 'file-export'],
+    ];
+    return $actions[$action] ?? ['label' => $action, 'color' => 'gray', 'icon' => 'circle'];
+}
+
+/**
+ * Lấy tên loại đối tượng tiếng Việt
+ */
+function entityTypeLabel(string $type): string
+{
+    $types = [
+        'product' => 'Sản phẩm',
+        'order' => 'Đơn hàng',
+        'user' => 'Người dùng',
+        'category' => 'Danh mục',
+        'brand' => 'Thương hiệu',
+        'coupon' => 'Mã giảm giá',
+        'review' => 'Đánh giá',
+        'auth' => 'Xác thực',
+    ];
+    return $types[$type] ?? $type;
+}

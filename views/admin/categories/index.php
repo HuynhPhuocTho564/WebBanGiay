@@ -1,11 +1,16 @@
+<?php $canEdit = Session::isAdmin(); ?>
 <div class="space-y-6">
     <!-- Header -->
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h2 class="text-2xl font-bold">Quản lý danh mục</h2>
+        <?php if ($canEdit): ?>
         <button onclick="document.getElementById('addModal').classList.remove('hidden')" 
                 class="px-4 py-2 bg-accent text-white rounded-lg hover:bg-blue-600">
             <i class="fas fa-plus mr-2"></i>Thêm danh mục
         </button>
+        <?php else: ?>
+        <span class="text-sm text-gray-500 italic">Chỉ Admin mới có quyền thêm/sửa/xóa</span>
+        <?php endif; ?>
     </div>
 
     <!-- Categories Table -->
@@ -39,6 +44,7 @@
                         </span>
                     </td>
                     <td class="px-4 py-3 text-center">
+                        <?php if ($canEdit): ?>
                         <button onclick="editCategory(<?= htmlspecialchars(json_encode($cat)) ?>)" 
                                 class="text-accent hover:underline mr-3">Sửa</button>
                         <?php if ($cat['product_count'] == 0): ?>
@@ -48,6 +54,9 @@
                         <?php else: ?>
                         <button onclick="alert('Không thể xóa! Danh mục đang có <?= $cat['product_count'] ?> sản phẩm.')" 
                                 class="text-gray-400 cursor-not-allowed">Xóa</button>
+                        <?php endif; ?>
+                        <?php else: ?>
+                        <span class="text-gray-400">—</span>
                         <?php endif; ?>
                     </td>
                 </tr>

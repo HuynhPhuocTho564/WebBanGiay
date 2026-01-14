@@ -139,11 +139,6 @@
                 </div>
                 <?php endif; ?>
 
-                <!-- Stock Info -->
-                <div id="stockInfo" class="text-sm text-gray-500">
-                    <i class="fas fa-box mr-1"></i> Vui lòng chọn màu và size
-                </div>
-
                 <!-- Quantity -->
                 <div>
                     <label class="block font-medium mb-2">Số lượng</label>
@@ -260,8 +255,8 @@
                 <?php if (Session::isLoggedIn()): ?>
                 <div class="mb-8 p-4 bg-gray-50 rounded-xl">
                     <h4 class="font-bold mb-4">Viết đánh giá của bạn</h4>
-                    <form id="reviewForm">
-                        <input type="hidden" name="product_id" value="<?= $productDetail['id'] ?? $product['id'] ?>">
+                    <form id="reviewForm" action="javascript:void(0)" onsubmit="submitReview(event)">
+                        <input type="hidden" name="product_id" value="<?= $product['id'] ?>">
                         <div class="mb-4">
                             <label class="block text-sm font-medium mb-2">Đánh giá</label>
                             <div class="flex gap-2" id="ratingStars">
@@ -364,24 +359,41 @@
             <h3 class="text-xl font-bold">Hướng dẫn chọn size</h3>
             <button onclick="closeSizeGuide()" class="text-2xl">&times;</button>
         </div>
+        
+        <!-- Hướng dẫn đo chân -->
+        <div class="mb-4 p-3 bg-blue-50 rounded-lg text-sm">
+            <p class="font-medium text-blue-800 mb-2"><i class="fas fa-info-circle mr-1"></i> Cách đo chân:</p>
+            <ol class="list-decimal list-inside text-blue-700 space-y-1">
+                <li>Đặt chân lên tờ giấy, đánh dấu điểm gót và ngón dài nhất</li>
+                <li>Đo khoảng cách giữa 2 điểm (cm)</li>
+                <li>Nên đo vào buổi chiều khi chân hơi nở</li>
+            </ol>
+        </div>
+
         <table class="w-full text-sm">
             <thead class="bg-gray-100">
                 <tr>
-                    <th class="p-2">Size</th>
-                    <th class="p-2">Chiều dài (cm)</th>
-                    <th class="p-2">EU</th>
+                    <th class="p-3 text-center">Size</th>
+                    <th class="p-3 text-center">Chiều dài bàn chân (cm)</th>
                 </tr>
             </thead>
             <tbody>
-                <tr class="border-b"><td class="p-2 text-center">38</td><td class="p-2 text-center">24</td><td class="p-2 text-center">38</td></tr>
-                <tr class="border-b"><td class="p-2 text-center">39</td><td class="p-2 text-center">24.5</td><td class="p-2 text-center">39</td></tr>
-                <tr class="border-b"><td class="p-2 text-center">40</td><td class="p-2 text-center">25</td><td class="p-2 text-center">40</td></tr>
-                <tr class="border-b"><td class="p-2 text-center">41</td><td class="p-2 text-center">25.5</td><td class="p-2 text-center">41</td></tr>
-                <tr class="border-b"><td class="p-2 text-center">42</td><td class="p-2 text-center">26</td><td class="p-2 text-center">42</td></tr>
-                <tr class="border-b"><td class="p-2 text-center">43</td><td class="p-2 text-center">27</td><td class="p-2 text-center">43</td></tr>
-                <tr><td class="p-2 text-center">44</td><td class="p-2 text-center">27.5</td><td class="p-2 text-center">44</td></tr>
+                <tr class="border-b"><td class="p-3 text-center font-medium">36</td><td class="p-3 text-center">22.5 - 23</td></tr>
+                <tr class="border-b"><td class="p-3 text-center font-medium">37</td><td class="p-3 text-center">23 - 23.5</td></tr>
+                <tr class="border-b"><td class="p-3 text-center font-medium">38</td><td class="p-3 text-center">23.5 - 24</td></tr>
+                <tr class="border-b"><td class="p-3 text-center font-medium">39</td><td class="p-3 text-center">24 - 24.5</td></tr>
+                <tr class="border-b"><td class="p-3 text-center font-medium">40</td><td class="p-3 text-center">24.5 - 25</td></tr>
+                <tr class="border-b"><td class="p-3 text-center font-medium">41</td><td class="p-3 text-center">25 - 25.5</td></tr>
+                <tr class="border-b"><td class="p-3 text-center font-medium">42</td><td class="p-3 text-center">25.5 - 26</td></tr>
+                <tr class="border-b"><td class="p-3 text-center font-medium">43</td><td class="p-3 text-center">26 - 26.5</td></tr>
+                <tr class="border-b"><td class="p-3 text-center font-medium">44</td><td class="p-3 text-center">26.5 - 27</td></tr>
+                <tr><td class="p-3 text-center font-medium">45</td><td class="p-3 text-center">27 - 27.5</td></tr>
             </tbody>
         </table>
+
+        <div class="mt-4 p-3 bg-yellow-50 rounded-lg text-sm text-yellow-800">
+            <p><i class="fas fa-lightbulb mr-1"></i> <strong>Lưu ý:</strong> Nếu chân bạn ở giữa 2 size, nên chọn size lớn hơn để thoải mái hơn.</p>
+        </div>
     </div>
 </div>
 
@@ -411,15 +423,12 @@ function updateVariant() {
     
     if (color && size) {
         selectedVariant = variants.find(v => v.color === color && v.size === size);
-        const stockInfo = document.getElementById('stockInfo');
         const addBtn = document.getElementById('addToCartBtn');
         
         if (selectedVariant) {
             if (selectedVariant.stock_quantity > 0) {
-                stockInfo.innerHTML = `<i class="fas fa-check-circle text-green-500 mr-1"></i> Còn ${selectedVariant.stock_quantity} sản phẩm`;
                 addBtn.disabled = false;
             } else {
-                stockInfo.innerHTML = `<i class="fas fa-times-circle text-red-500 mr-1"></i> Hết hàng`;
                 addBtn.disabled = true;
             }
         }
@@ -677,18 +686,29 @@ imageContainer?.addEventListener('mousemove', function(e) {
     magnifier.style.backgroundPosition = `${bgX}px ${bgY}px`;
 });
 
-// Review form AJAX submit
-document.getElementById('reviewForm')?.addEventListener('submit', function(e) {
+// Review form submit function
+function submitReview(e) {
     e.preventDefault();
     
-    const productId = this.querySelector('input[name="product_id"]').value;
+    const form = document.getElementById('reviewForm');
+    const productId = form.querySelector('input[name="product_id"]').value;
     const rating = document.getElementById('ratingInput').value;
     const comment = document.getElementById('reviewComment').value.trim();
     
     if (!comment) {
-        showToast('Vui lòng nhập nhận xét', 'error');
+        if (typeof showToast === 'function') {
+            showToast('Vui lòng nhập nhận xét', 'error');
+        } else {
+            alert('Vui lòng nhập nhận xét');
+        }
         return;
     }
+    
+    // Disable button while submitting
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const originalText = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Đang gửi...';
     
     fetch('<?= BASE_URL ?>/home/addReview', {
         method: 'POST',
@@ -698,16 +718,31 @@ document.getElementById('reviewForm')?.addEventListener('submit', function(e) {
     .then(res => res.json())
     .then(data => {
         if (data.success) {
-            // Reload trang để hiển thị review mới
+            // Reload trang để hiển thị review mới (không hiện toast)
             location.reload();
         } else if (data.requireLogin) {
             window.location.href = '<?= BASE_URL ?>/auth/login';
         } else {
-            showToast(data.message || 'Có lỗi xảy ra', 'error');
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalText;
+            if (typeof showToast === 'function') {
+                showToast(data.message || 'Có lỗi xảy ra', 'error');
+            } else {
+                alert(data.message || 'Có lỗi xảy ra');
+            }
         }
     })
     .catch(() => {
-        showToast('Có lỗi xảy ra', 'error');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+        if (typeof showToast === 'function') {
+            showToast('Có lỗi xảy ra', 'error');
+        } else {
+            alert('Có lỗi xảy ra');
+        }
     });
-});
+}
+
+// Remove old event listener (keep for backward compatibility)
+document.getElementById('reviewForm')?.addEventListener('submit', submitReview);
 </script>

@@ -1,61 +1,105 @@
 <div class="space-y-6">
-    <h2 class="text-2xl font-bold">Báo cáo thống kê</h2>
+    <div class="flex flex-wrap items-center justify-between gap-4">
+        <h2 class="text-2xl font-bold">Báo cáo thống kê</h2>
+        
+        <!-- Bộ lọc thời gian -->
+        <form method="GET" action="<?= BASE_URL ?>/adminreport" id="filterForm" class="flex flex-wrap items-center gap-3" onsubmit="return validateDateRange()">
+            <label for="periodSelect" class="text-sm font-medium text-gray-600">
+                <i class="fas fa-calendar-alt mr-1"></i>Thời gian:
+            </label>
+            <select name="period" id="periodSelect" onchange="toggleCustomDate(this.value)" 
+                    title="Chọn khoảng thời gian"
+                    class="px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 text-sm">
+                <option value="today" <?= ($period ?? '') === 'today' ? 'selected' : '' ?>>Hôm nay</option>
+                <option value="yesterday" <?= ($period ?? '') === 'yesterday' ? 'selected' : '' ?>>Hôm qua</option>
+                <option value="7days" <?= ($period ?? '') === '7days' ? 'selected' : '' ?>>7 ngày qua</option>
+                <option value="30days" <?= ($period ?? '') === '30days' ? 'selected' : '' ?>>30 ngày qua</option>
+                <option value="this_month" <?= ($period ?? 'this_month') === 'this_month' ? 'selected' : '' ?>>Tháng này</option>
+                <option value="last_month" <?= ($period ?? '') === 'last_month' ? 'selected' : '' ?>>Tháng trước</option>
+                <option value="this_year" <?= ($period ?? '') === 'this_year' ? 'selected' : '' ?>>Năm nay</option>
+                <option value="all" <?= ($period ?? '') === 'all' ? 'selected' : '' ?>>Tất cả</option>
+                <option value="custom" <?= ($period ?? '') === 'custom' ? 'selected' : '' ?>>Tùy chọn</option>
+            </select>
+            <div id="customDateRange" class="flex items-center gap-2 <?= ($period ?? '') !== 'custom' ? 'hidden' : '' ?>">
+                <label for="fromDate" class="text-sm text-gray-500">Từ:</label>
+                <input type="date" name="from_date" id="fromDate" value="<?= $fromDate ?? '' ?>" 
+                       title="Ngày bắt đầu" max="<?= date('Y-m-d') ?>"
+                       class="px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 text-sm">
+                <label for="toDate" class="text-sm text-gray-500">Đến:</label>
+                <input type="date" name="to_date" id="toDate" value="<?= $toDate ?? '' ?>" 
+                       title="Ngày kết thúc" max="<?= date('Y-m-d') ?>"
+                       class="px-3 py-2 border rounded-lg focus:outline-none focus:border-blue-500 text-sm">
+            </div>
+            <button type="submit" title="Áp dụng bộ lọc" class="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition text-sm">
+                <i class="fas fa-filter mr-1"></i> Lọc
+            </button>
+            <?php if (($period ?? 'this_month') !== 'this_month'): ?>
+            <a href="<?= BASE_URL ?>/adminreport" title="Xóa bộ lọc" class="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition text-sm">
+                <i class="fas fa-times mr-1"></i> Xóa lọc
+            </a>
+            <?php endif; ?>
+        </form>
+    </div>
+
+    <!-- Hiển thị khoảng thời gian đang xem -->
+    <div class="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2 text-sm text-blue-700">
+        <i class="fas fa-info-circle mr-2"></i>
+        Đang xem báo cáo: <strong><?= $periodLabel ?? 'Tháng này' ?></strong>
+        <?php if (!empty($fromDate) && !empty($toDate)): ?>
+            (<?= date('d/m/Y', strtotime($fromDate)) ?> - <?= date('d/m/Y', strtotime($toDate)) ?>)
+        <?php endif; ?>
+    </div>
 
     <!-- Stats Cards -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <!-- Doanh thu theo bộ lọc -->
         <div class="bg-white rounded-lg shadow-sm p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-500">Doanh thu hôm nay</p>
-                    <p class="text-2xl font-bold text-green-600"><?= number_format($todayRevenue['revenue'] ?? 0, 0, ',', '.') ?>đ</p>
+                    <p class="text-sm text-gray-500">Doanh thu <?= strtolower($periodLabel ?? '') ?></p>
+                    <p class="text-2xl font-bold text-green-600"><?= number_format($filteredRevenue['revenue'] ?? 0, 0, ',', '.') ?>đ</p>
                 </div>
                 <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center">
                     <i class="fas fa-dollar-sign text-green-600"></i>
                 </div>
             </div>
+            <p class="text-sm text-gray-500 mt-2"><?= $filteredRevenue['orders'] ?? 0 ?> đơn hoàn thành</p>
+        </div>
+
+        <!-- Tổng đơn hàng theo bộ lọc -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Đơn hàng <?= strtolower($periodLabel ?? '') ?></p>
+                    <p class="text-2xl font-bold text-blue-600"><?= $filteredOrders['total'] ?? 0 ?></p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-shopping-cart text-blue-600"></i>
+                </div>
+            </div>
+            <p class="text-sm text-gray-500 mt-2"><?= $filteredOrders['completed'] ?? 0 ?> hoàn thành</p>
+        </div>
+
+        <!-- Doanh thu hôm nay -->
+        <div class="bg-white rounded-lg shadow-sm p-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm text-gray-500">Doanh thu hôm nay</p>
+                    <p class="text-2xl font-bold text-purple-600"><?= number_format($todayRevenue['revenue'] ?? 0, 0, ',', '.') ?>đ</p>
+                </div>
+                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
+                    <i class="fas fa-calendar-day text-purple-600"></i>
+                </div>
+            </div>
             <p class="text-sm text-gray-500 mt-2"><?= $todayRevenue['orders'] ?? 0 ?> đơn hàng</p>
         </div>
 
+        <!-- Chờ xử lý -->
         <div class="bg-white rounded-lg shadow-sm p-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <p class="text-sm text-gray-500">Doanh thu tháng này</p>
-                    <p class="text-2xl font-bold text-blue-600"><?= number_format($monthRevenue['revenue'] ?? 0, 0, ',', '.') ?>đ</p>
-                </div>
-                <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-chart-line text-blue-600"></i>
-                </div>
-            </div>
-            <p class="text-sm text-gray-500 mt-2"><?= $monthRevenue['orders'] ?? 0 ?> đơn hàng</p>
-        </div>
-
-        <?php 
-        $totalOrders = array_sum(array_column($orderStats, 'count'));
-        $completedOrders = 0;
-        $pendingOrders = 0;
-        foreach ($orderStats as $stat) {
-            if ($stat['status'] === 'completed') $completedOrders = $stat['count'];
-            if ($stat['status'] === 'pending') $pendingOrders = $stat['count'];
-        }
-        ?>
-        <div class="bg-white rounded-lg shadow-sm p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-500">Tổng đơn hàng</p>
-                    <p class="text-2xl font-bold text-purple-600"><?= $totalOrders ?></p>
-                </div>
-                <div class="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                    <i class="fas fa-shopping-cart text-purple-600"></i>
-                </div>
-            </div>
-            <p class="text-sm text-gray-500 mt-2"><?= $completedOrders ?> hoàn thành</p>
-        </div>
-
-        <div class="bg-white rounded-lg shadow-sm p-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <p class="text-sm text-gray-500">Chờ xử lý</p>
-                    <p class="text-2xl font-bold text-orange-600"><?= $pendingOrders ?></p>
+                    <p class="text-sm text-gray-500">Chờ xử lý <?= strtolower($periodLabel ?? '') ?></p>
+                    <p class="text-2xl font-bold text-orange-600"><?= $filteredOrders['pending'] ?? 0 ?></p>
                 </div>
                 <div class="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
                     <i class="fas fa-clock text-orange-600"></i>
@@ -73,8 +117,12 @@
                 <i class="fas fa-chart-bar text-blue-500 mr-2"></i>
                 Doanh thu 12 tháng gần nhất
             </h3>
-            <div class="h-80">
-                <canvas id="revenueChart"></canvas>
+            <div class="h-80 flex items-center justify-center">
+                <?php if (empty($revenueByMonth)): ?>
+                <p class="text-gray-400">Chưa có dữ liệu doanh thu</p>
+                <?php else: ?>
+                <canvas id="revenueChart" class="w-full"></canvas>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -82,10 +130,14 @@
         <div class="bg-white rounded-lg shadow-sm p-6">
             <h3 class="font-bold mb-4">
                 <i class="fas fa-chart-pie text-green-500 mr-2"></i>
-                Trạng thái đơn hàng
+                Trạng thái đơn hàng <span class="text-sm font-normal text-gray-400">(<?= $periodLabel ?? '' ?>)</span>
             </h3>
-            <div class="h-80">
+            <div class="h-80 flex items-center justify-center">
+                <?php if (empty($orderStats)): ?>
+                <p class="text-gray-400">Không có dữ liệu trong khoảng thời gian này</p>
+                <?php else: ?>
                 <canvas id="orderStatusChart"></canvas>
+                <?php endif; ?>
             </div>
         </div>
     </div>
@@ -96,10 +148,14 @@
         <div class="bg-white rounded-lg shadow-sm p-6">
             <h3 class="font-bold mb-4">
                 <i class="fas fa-trophy text-yellow-500 mr-2"></i>
-                Top sản phẩm bán chạy
+                Top sản phẩm bán chạy <span class="text-sm font-normal text-gray-400">(<?= $periodLabel ?? '' ?>)</span>
             </h3>
-            <div class="h-80">
+            <div class="h-80 flex items-center justify-center">
+                <?php if (empty($topProducts)): ?>
+                <p class="text-gray-400">Không có dữ liệu trong khoảng thời gian này</p>
+                <?php else: ?>
                 <canvas id="topProductsChart"></canvas>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -107,7 +163,7 @@
         <div class="bg-white rounded-lg shadow-sm p-6">
             <h3 class="font-bold mb-4">
                 <i class="fas fa-list text-purple-500 mr-2"></i>
-                Chi tiết top 10 sản phẩm
+                Chi tiết top 10 sản phẩm <span class="text-sm font-normal text-gray-400">(<?= $periodLabel ?? '' ?>)</span>
             </h3>
             <div class="overflow-x-auto max-h-80 overflow-y-auto">
                 <table class="w-full">
@@ -152,12 +208,49 @@
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+// Hàm xử lý bộ lọc
+function toggleCustomDate(value) {
+    const customDiv = document.getElementById('customDateRange');
+    if (value === 'custom') {
+        customDiv.classList.remove('hidden');
+        const fromDate = document.getElementById('fromDate');
+        const toDate = document.getElementById('toDate');
+        if (!fromDate.value) {
+            const d = new Date();
+            d.setDate(d.getDate() - 7);
+            fromDate.value = d.toISOString().split('T')[0];
+        }
+        if (!toDate.value) {
+            toDate.value = new Date().toISOString().split('T')[0];
+        }
+    } else {
+        customDiv.classList.add('hidden');
+    }
+}
+
+function validateDateRange() {
+    const period = document.getElementById('periodSelect').value;
+    if (period === 'custom') {
+        const fromDate = document.getElementById('fromDate').value;
+        const toDate = document.getElementById('toDate').value;
+        if (!fromDate || !toDate) {
+            alert('Vui lòng chọn ngày bắt đầu và ngày kết thúc');
+            return false;
+        }
+        if (fromDate > toDate) {
+            alert('Ngày bắt đầu phải nhỏ hơn hoặc bằng ngày kết thúc');
+            return false;
+        }
+    }
+    return true;
+}
 // Dữ liệu từ PHP
 const revenueData = <?= json_encode($revenueByMonth) ?>;
 const orderStatsData = <?= json_encode($orderStats) ?>;
 const topProductsData = <?= json_encode($topProducts) ?>;
 
 // 1. Biểu đồ doanh thu theo tháng (Bar Chart)
+<?php if (!empty($revenueByMonth)): ?>
 const revenueCtx = document.getElementById('revenueChart').getContext('2d');
 new Chart(revenueCtx, {
     type: 'bar',
@@ -202,6 +295,7 @@ new Chart(revenueCtx, {
         }
     }
 });
+<?php endif; ?>
 
 // 2. Biểu đồ trạng thái đơn hàng (Doughnut Chart)
 const statusLabels = {
@@ -223,6 +317,7 @@ const statusColors = {
     'returned': '#6B7280'
 };
 
+<?php if (!empty($orderStats)): ?>
 const orderStatusCtx = document.getElementById('orderStatusChart').getContext('2d');
 new Chart(orderStatusCtx, {
     type: 'doughnut',
@@ -246,8 +341,10 @@ new Chart(orderStatusCtx, {
         }
     }
 });
+<?php endif; ?>
 
 // 3. Biểu đồ top sản phẩm (Horizontal Bar Chart)
+<?php if (!empty($topProducts)): ?>
 const topProductsCtx = document.getElementById('topProductsChart').getContext('2d');
 new Chart(topProductsCtx, {
     type: 'bar',
@@ -292,4 +389,5 @@ new Chart(topProductsCtx, {
         }
     }
 });
+<?php endif; ?>
 </script>

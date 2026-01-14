@@ -1,6 +1,6 @@
 <?php
 /**
- * Trang danh sách đơn hàng
+ * Trang danh sách đơn hàng - Gộp tất cả đơn hàng với tabs lọc trạng thái
  */
 
 // Hàm hiển thị trạng thái đơn hàng
@@ -19,6 +19,16 @@ function getOrderStatusBadge($status) {
     return '<span class="px-2 py-1 text-xs font-medium rounded-full ' . $badge[0] . '">' . $badge[1] . '</span>';
 }
 }
+
+$currentStatus = $_GET['status'] ?? 'all';
+$statusTabs = [
+    'all' => 'Tất cả',
+    'pending' => 'Chờ xác nhận',
+    'processing' => 'Đang xử lý', 
+    'shipping' => 'Đang giao',
+    'completed' => 'Hoàn thành',
+    'cancelled' => 'Đã hủy',
+];
 ?>
 
 <div class="container mx-auto px-4 py-6">
@@ -28,21 +38,36 @@ function getOrderStatusBadge($status) {
 
         <!-- Content -->
         <div class="flex-1">
-            <div class="bg-white rounded-xl shadow-sm p-6">
-                <h2 class="text-xl font-bold mb-6">Đơn hàng của tôi</h2>
+            <div class="bg-white rounded-xl shadow-sm">
+                <div class="p-6 border-b">
+                    <h2 class="text-xl font-bold">Đơn hàng của tôi</h2>
+                </div>
 
+                <!-- Status Tabs -->
+                <div class="border-b overflow-x-auto">
+                    <div class="flex min-w-max">
+                        <?php foreach ($statusTabs as $status => $label): ?>
+                        <a href="<?= BASE_URL ?>/profile/orders<?= $status !== 'all' ? '?status=' . $status : '' ?>" 
+                           class="px-6 py-3 text-sm font-medium border-b-2 transition whitespace-nowrap <?= $currentStatus === $status ? 'border-accent text-accent' : 'border-transparent text-gray-500 hover:text-gray-700' ?>">
+                            <?= $label ?>
+                        </a>
+                        <?php endforeach; ?>
+                    </div>
+                </div>
+
+                <div class="p-6">
                 <?php if (empty($orders)): ?>
                 <div class="text-center py-12">
                     <i class="fas fa-box-open text-6xl text-gray-300 mb-4"></i>
-                    <p class="text-gray-500 mb-4">Bạn chưa có đơn hàng nào</p>
-                    <a href="<?= BASE_URL ?>/products" class="inline-block px-6 py-2 bg-accent text-white rounded-lg hover:bg-red-600">
+                    <p class="text-gray-500 mb-4">Không có đơn hàng nào</p>
+                    <a href="<?= BASE_URL ?>/home/products" class="inline-block px-6 py-2 bg-accent text-white rounded-lg hover:bg-red-600">
                         Mua sắm ngay
                     </a>
                 </div>
                 <?php else: ?>
                 <div class="space-y-4">
                     <?php foreach ($orders as $order): ?>
-                    <div class="border rounded-lg p-4 hover:shadow-md transition">
+                    <div class="border rounded-lg p-4 hover:shadow-md transition <?= $order['status'] === 'cancelled' ? 'bg-gray-50' : '' ?>">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
                             <div>
                                 <span class="font-medium">Đơn hàng #<?= $order['id'] ?></span>
@@ -57,7 +82,7 @@ function getOrderStatusBadge($status) {
                         <?php if (!empty($order['items'])): ?>
                         <div class="flex items-center gap-3 py-3 border-t border-b">
                             <div class="flex -space-x-2">
-                                <?php foreach ($order['items'] as $item): ?>
+                                <?php foreach (array_slice($order['items'], 0, 4) as $item): ?>
                                 <img src="<?= productImage($item['thumbnail']) ?>" alt="<?= $item['name'] ?>" 
                                      class="w-12 h-12 rounded-lg object-cover border-2 border-white" title="<?= $item['name'] ?>">
                                 <?php endforeach; ?>
@@ -76,22 +101,28 @@ function getOrderStatusBadge($status) {
                         
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3">
                             <div class="text-sm text-gray-600">
-                                <i class="fas fa-map-marker-alt mr-1"></i>
-                                <?= htmlspecialchars(mb_substr($order['address'], 0, 50)) ?>...
-                            </div>
-                            <div class="flex items-center gap-3">
-                                <span class="font-bold text-accent">
+                                <span class="font-bold <?= $order['status'] === 'cancelled' ? 'text-gray-400 line-through' : 'text-accent' ?> text-base">
                                     <?= number_format($order['total_money'], 0, ',', '.') ?>đ
                                 </span>
+                                <span class="text-gray-400 mx-2">|</span>
+                                <?= $order['item_count'] ?> sản phẩm
+                            </div>
+                            <div class="flex items-center gap-2">
                                 <?php if ($order['status'] === 'pending'): ?>
                                 <button onclick="cancelOrder(<?= $order['id'] ?>)" 
                                         class="px-4 py-1.5 text-sm border border-red-500 text-red-500 rounded-lg hover:bg-red-500 hover:text-white transition">
                                     Hủy đơn
                                 </button>
                                 <?php endif; ?>
+                                <?php if ($order['status'] === 'completed'): ?>
+                                <button onclick="reorder(<?= $order['id'] ?>)" 
+                                        class="px-4 py-1.5 text-sm bg-accent text-white rounded-lg hover:bg-red-600 transition">
+                                    Mua lại
+                                </button>
+                                <?php endif; ?>
                                 <a href="<?= BASE_URL ?>/profile/orderDetail/<?= $order['id'] ?>" 
-                                   class="px-4 py-1.5 text-sm border border-accent text-accent rounded-lg hover:bg-accent hover:text-white transition">
-                                    Chi tiết
+                                   class="px-4 py-1.5 text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition">
+                                    Xem chi tiết
                                 </a>
                             </div>
                         </div>
@@ -99,6 +130,7 @@ function getOrderStatusBadge($status) {
                     <?php endforeach; ?>
                 </div>
                 <?php endif; ?>
+                </div>
             </div>
         </div>
     </div>
@@ -116,7 +148,7 @@ function getOrderStatusBadge($status) {
                 <span>Tôi muốn thay đổi địa chỉ giao hàng</span>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="cancel_reason" value="Tôi muốn thay đổi sản phẩm (size, màu, số lượng)" class="text-accent">
+                <input type="radio" name="cancel_reason" value="Tôi muốn thay đổi sản phẩm" class="text-accent">
                 <span>Tôi muốn thay đổi sản phẩm (size, màu, số lượng)</span>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
@@ -126,10 +158,6 @@ function getOrderStatusBadge($status) {
             <label class="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="cancel_reason" value="Tôi không còn nhu cầu mua nữa" class="text-accent">
                 <span>Tôi không còn nhu cầu mua nữa</span>
-            </label>
-            <label class="flex items-center gap-2 cursor-pointer">
-                <input type="radio" name="cancel_reason" value="Tôi đặt nhầm sản phẩm" class="text-accent">
-                <span>Tôi đặt nhầm sản phẩm</span>
             </label>
             <label class="flex items-center gap-2 cursor-pointer">
                 <input type="radio" name="cancel_reason" value="other" class="text-accent" id="otherReasonRadio">
@@ -158,7 +186,6 @@ function cancelOrder(orderId) {
     document.getElementById('cancelOrderId').value = orderId;
     document.getElementById('cancelModal').classList.remove('hidden');
     document.getElementById('cancelModal').classList.add('flex');
-    // Reset form
     document.querySelectorAll('input[name="cancel_reason"]').forEach(r => r.checked = false);
     document.getElementById('otherReasonText').classList.add('hidden');
     document.getElementById('otherReasonText').value = '';
@@ -169,8 +196,7 @@ function closeCancelModal() {
     document.getElementById('cancelModal').classList.remove('flex');
 }
 
-// Hiện textarea khi chọn "Khác"
-document.getElementById('otherReasonRadio').addEventListener('change', function() {
+document.getElementById('otherReasonRadio')?.addEventListener('change', function() {
     document.getElementById('otherReasonText').classList.remove('hidden');
 });
 document.querySelectorAll('input[name="cancel_reason"]:not(#otherReasonRadio)').forEach(radio => {
@@ -213,8 +239,13 @@ function submitCancel() {
     .catch(() => alert('Có lỗi xảy ra'));
 }
 
-// Đóng modal khi click bên ngoài
-document.getElementById('cancelModal').addEventListener('click', function(e) {
+function reorder(orderId) {
+    if (confirm('Thêm các sản phẩm trong đơn hàng này vào giỏ hàng?')) {
+        window.location.href = '<?= BASE_URL ?>/profile/reorder/' + orderId;
+    }
+}
+
+document.getElementById('cancelModal')?.addEventListener('click', function(e) {
     if (e.target === this) closeCancelModal();
 });
 </script>

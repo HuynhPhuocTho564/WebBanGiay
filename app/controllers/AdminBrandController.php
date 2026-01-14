@@ -9,7 +9,8 @@ class AdminBrandController extends Controller
     public function __construct()
     {
         parent::__construct();
-        Middleware::requireAdmin();
+        // Chỉ Admin mới được truy cập quản lý thương hiệu
+        Middleware::requireSuperAdmin();
     }
 
     /**
@@ -17,6 +18,9 @@ class AdminBrandController extends Controller
      */
     public function index(): void
     {
+        // Staff chỉ được xem, không được thêm/sửa/xóa
+        $canEdit = Session::isAdmin();
+        
         $brands = $this->db->fetchAll(
             "SELECT b.*, (SELECT COUNT(*) FROM products WHERE brand_id = b.id) as product_count 
              FROM brands b ORDER BY b.name"
@@ -24,7 +28,8 @@ class AdminBrandController extends Controller
 
         $data = [
             'pageTitle' => 'Quản lý thương hiệu',
-            'brands' => $brands
+            'brands' => $brands,
+            'canEdit' => $canEdit
         ];
 
         $this->view('admin/layouts/header', $data);
@@ -33,11 +38,13 @@ class AdminBrandController extends Controller
     }
 
     /**
-     * Thêm thương hiệu
+     * Thêm thương hiệu (Chỉ Admin)
      * BUG #16 FIX: Kiểm tra tên trùng
      */
     public function store(): void
     {
+        Middleware::requireSuperAdmin();
+        
         if (!$this->isPost()) {
             $this->redirect('adminbrand');
         }
@@ -64,16 +71,21 @@ class AdminBrandController extends Controller
             'logo' => ''
         ]);
 
+        $brandId = $this->db->lastInsertId();
+        logAction('create', "Tạo thương hiệu: $name", 'brand', (int)$brandId);
+
         Session::flash('success', 'Thêm thương hiệu thành công');
         $this->redirect('adminbrand');
     }
 
     /**
-     * Cập nhật thương hiệu
+     * Cập nhật thương hiệu (Chỉ Admin)
      * BUG #16 FIX: Kiểm tra tên trùng
      */
     public function update(int $id = 0): void
     {
+        Middleware::requireSuperAdmin();
+        
         if (!$this->isPost()) {
             $this->redirect('adminbrand');
         }
@@ -102,15 +114,18 @@ class AdminBrandController extends Controller
             'status' => $status
         ], 'id = ?', [$id]);
 
+        logAction('update', "Cập nhật thương hiệu: $name", 'brand', $id);
+
         Session::flash('success', 'Cập nhật thương hiệu thành công');
         $this->redirect('adminbrand');
     }
 
     /**
-     * Xóa thương hiệu
+     * Xóa thương hiệu (Chỉ Admin)
      */
     public function delete(int $id = 0): void
     {
+        Middleware::requireSuperAdmin();
         $count = $this->db->count("SELECT COUNT(*) FROM products WHERE brand_id = ?", [$id]);
         
         if ($count > 0) {
@@ -118,7 +133,11 @@ class AdminBrandController extends Controller
             $this->redirect('adminbrand');
         }
 
+        $brand = $this->db->fetchOne("SELECT name FROM brands WHERE id = ?", [$id]);
         $this->db->query("DELETE FROM brands WHERE id = ?", [$id]);
+        
+        logAction('delete', "Xóa thương hiệu: " . ($brand['name'] ?? "ID $id"), 'brand', $id);
+        
         Session::flash('success', 'Xóa thương hiệu thành công');
         $this->redirect('adminbrand');
     }

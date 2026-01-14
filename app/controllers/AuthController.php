@@ -61,6 +61,8 @@ class AuthController extends Controller
         $user = $this->userModel->authenticate($username, $password);
 
         if (!$user) {
+            // Ghi log đăng nhập thất bại
+            logAction('login_failed', "Đăng nhập thất bại với username: $username", 'auth', null);
             Session::flash('error', 'Tên đăng nhập hoặc mật khẩu không đúng');
             $this->redirect('auth/login');
         }
@@ -77,6 +79,9 @@ class AuthController extends Controller
         // Đăng nhập thành công
         Session::login($user);
         Session::flash('success', 'Đăng nhập thành công! Chào mừng ' . $user['fullname']);
+
+        // Ghi log đăng nhập
+        logAction('login', 'Đăng nhập hệ thống', 'auth', $user['id']);
 
         // Redirect theo role
         if ($user['role'] >= 1) {
@@ -158,6 +163,10 @@ class AuthController extends Controller
         // Tự động đăng nhập
         Session::login($user);
         Session::flash('success', 'Đăng ký thành công! Chào mừng bạn đến với ' . SITE_NAME);
+        
+        // Ghi log đăng ký
+        logAction('create', 'Đăng ký tài khoản mới: ' . $data['username'], 'user', $userId);
+        
         $this->redirect('');
     }
 
@@ -237,6 +246,9 @@ class AuthController extends Controller
      */
     public function logout(): void
     {
+        // Ghi log trước khi logout (vì sau logout sẽ mất session)
+        logAction('logout', 'Đăng xuất khỏi hệ thống', 'auth', Session::user()['id'] ?? null);
+        
         Session::logout();
         Session::flash('success', 'Đăng xuất thành công');
         $this->redirect('');
@@ -340,6 +352,9 @@ class AuthController extends Controller
         // Đăng nhập
         Session::login($user);
         Session::flash('success', 'Đăng nhập thành công! Chào mừng ' . $user['fullname']);
+
+        // Ghi log đăng nhập Google
+        logAction('login', 'Đăng nhập bằng Google: ' . $googleUser['email'], 'auth', $user['id']);
 
         if ($user['role'] >= 1) {
             $this->redirect('admin');
